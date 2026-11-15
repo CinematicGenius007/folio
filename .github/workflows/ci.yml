@@ -52,6 +52,8 @@ jobs:
           name: folio-${{ matrix.browser }}
           path: .output/*.zip
           if-no-files-found: error
+          # .output is a dot-directory, which upload-artifact skips unless told otherwise
+          include-hidden-files: true
 
   site:
     name: Website build
@@ -71,7 +73,8 @@ jobs:
 
   e2e-chromium:
     name: End-to-end (Chromium)
-    runs-on: ubuntu-latest
+    # Pinned: Playwright's Chromium build does not support ubuntu-latest (26.04) yet.
+    runs-on: ubuntu-24.04
     needs: check
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4

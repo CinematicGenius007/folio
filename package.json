@@ -74,7 +74,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.0.0",
     "globals": "^17.14.0",
-    "playwright-core": "1.60.0",
+    "playwright-core": "1.65.0",
     "prettier": "^3.10.1",
     "tailwindcss": "^4.3.5",
     "typescript": "~5.9.0",

@@ -1,5 +1,12 @@
 name: Release
 
+# Push a tag like v0.1.1 (it must match "version" in package.json) to:
+#   1. build the Chromium and Firefox packages,
+#   2. get the Firefox build signed by Mozilla as an unlisted add-on,
+#   3. publish a GitHub release with every file,
+#   4. add the signed build to site/public/updates.json so installed copies update themselves.
+# Needs the repository secrets AMO_JWT_ISSUER and AMO_JWT_SECRET. See docs/RELEASING.md.
+
 on:
   push:
     tags: ['v*']
@@ -7,10 +14,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  UPDATE_URL: https://folio.cinematicgenius007.com/updates.json
+
 jobs:
   release:
     runs-on: ubuntu-latest
-    # Only this job may write, and only to create the release.
+    # Only this job may write: it creates the release and commits the update manifest.
     permissions:
       contents: write
     steps:
@@ -20,12 +34,71 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+
+      - name: Check the tag matches package.json
+        run: |
+          VERSION="$(node -p "require('./package.json').version")"
+          if [ "v$VERSION" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $VERSION"
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Check signing secrets exist
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ -z "$AMO_JWT_ISSUER" ] || [ -z "$AMO_JWT_SECRET" ]; then
+            echo "::error::Add AMO_JWT_ISSUER and AMO_JWT_SECRET as repository secrets (docs/RELEASING.md)"
+            exit 1
+          fi
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
       - run: pnpm zip
-      - run: pnpm zip:firefox
-      - run: pnpm verify:build
+      - name: Build the Firefox package with its update address
+        run: pnpm zip:firefox
+        env:
+          FOLIO_UPDATE_URL: ${{ env.UPDATE_URL }}
+      - name: Verify the builds
+        run: pnpm verify:build
+        env:
+          FOLIO_UPDATE_URL: ${{ env.UPDATE_URL }}
+
+      - name: Sign the Firefox build with Mozilla (unlisted)
+        env:
+          AMO_JWT_ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          AMO_JWT_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx --yes web-ext@10.8.0 sign \
+            --channel=unlisted \
+            --source-dir .output/firefox-mv2 \
+            --artifacts-dir signed \
+            --amo-metadata .github/amo-metadata.json \
+            --upload-source-code ".output/folio-${VERSION}-sources.zip" \
+            --approval-timeout 1800000 \
+            --api-key "$AMO_JWT_ISSUER" \
+            --api-secret "$AMO_JWT_SECRET"
+          mv signed/*.xpi ".output/folio-${VERSION}.xpi"
+
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           generate_release_notes: true
-          files: .output/*.zip
+          files: |
+            .output/*.zip
+            .output/*.xpi
+
+      # The release (and so the download link) exists now; point installed copies at it.
+      - name: Publish the update manifest
+        run: |
+          git fetch origin main
+          git checkout -B main origin/main
+          node scripts/update-manifest.mjs "$VERSION" ".output/folio-${VERSION}.xpi" \
+            "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/folio-${VERSION}.xpi" \
+            site/public/updates.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/public/updates.json
+          git commit -m "Publish update manifest for ${VERSION}"
+          git push origin main

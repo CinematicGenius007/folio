@@ -59,8 +59,30 @@ for (const file of pages) {
   }
 }
 
-for (const file of ['sitemap.xml', 'robots.txt', 'llms.txt', 'llms-full.txt', 'og.jpg', 'favicon.svg']) {
+for (const file of [
+  'sitemap.xml',
+  'robots.txt',
+  'llms.txt',
+  'llms-full.txt',
+  'og.jpg',
+  'favicon.svg',
+  'updates.json',
+]) {
   if (!existsSync(join(DIST, file))) problems.push(`missing ${file}`);
+}
+
+// The update manifest Firefox reads: every entry needs an https link, a numeric version and a sha256 hash.
+try {
+  const updates = JSON.parse(readFileSync(join(DIST, 'updates.json'), 'utf8')).addons['folio@cinematicgenius007.com']
+    .updates;
+  for (const u of updates) {
+    if (!/^\d+(\.\d+){0,3}$/.test(u.version)) problems.push(`updates.json: bad version ${u.version}`);
+    if (!u.update_link?.startsWith('https://')) problems.push(`updates.json: ${u.version} needs an https update_link`);
+    if (!/^sha256:[0-9a-f]{64}$/.test(u.update_hash ?? ''))
+      problems.push(`updates.json: ${u.version} needs a sha256 update_hash`);
+  }
+} catch {
+  problems.push('updates.json is missing or is not a valid update manifest');
 }
 
 if (problems.length) {

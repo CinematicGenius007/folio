@@ -27,6 +27,8 @@ Uninstalling Folio removes all of the above and leaves your bookmarks untouched.
 | Chrome, Edge, Brave, Arc, Dia | **None.** Icons come from the browser's own cache.                             |
 | Firefox and Zen               | Fetches each bookmarked site's icon **directly from that site**. Nothing else. |
 
+Privately signed Firefox and Zen builds also carry an update address on this site. Firefox itself, not Folio, requests that small file about once a day to check for a newer version. Builds you make yourself have none.
+
 How the Firefox and Zen icon fetcher behaves:
 
 - Requests carry no cookies and no referrer.

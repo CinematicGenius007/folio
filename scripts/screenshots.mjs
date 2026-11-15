@@ -51,6 +51,12 @@ try {
     console.log(`docs/screenshots/${name}.${type === 'jpeg' ? 'jpg' : 'png'}`);
   };
 
+  // Show the Meadow background, at medium strength so the edges read clearly in a README-sized image.
+  await dashboard.keyboard.press('b');
+  await dashboard.getByRole('button', { name: 'Meadow' }).click();
+  await dashboard.getByRole('button', { name: 'Medium' }).click();
+  await dashboard.keyboard.press('Escape');
+
   await dashboard.mouse.move(720, 330);
   await shoot(dashboard, 'dashboard-light');
   await dashboard.keyboard.press('c');

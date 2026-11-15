@@ -1,7 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/core/db';
-import { browserFaviconSrc, colorFor, hasBrowserFavicons, isBrowserPlaceholder, letterFor } from '@/lib/favicon';
+import {
+  type BrowserIcon,
+  browserFaviconSrc,
+  colorFor,
+  hasBrowserFavicons,
+  inspectBrowserIcon,
+  letterFor,
+} from '@/lib/favicon';
 import { useObjectUrl } from '@/lib/react';
 import { originOf } from '@/lib/util/url';
 
@@ -29,18 +36,18 @@ export function Tile({ title, url, size }: { title: string; url: string; size: n
   );
 }
 
-/** Whether Chromium has a real icon at `src`, rather than its generic globe. Unknown until checked, so a tile shows first. */
-function useIsRealIcon(src: string | undefined): boolean {
-  const [verdict, setVerdict] = useState<{ src: string; real: boolean }>();
+/** What Chromium has at `src`: undefined until checked (so a tile shows first), then whether it is a real icon. */
+function useBrowserIcon(src: string | undefined): (BrowserIcon & { src: string }) | undefined {
+  const [verdict, setVerdict] = useState<BrowserIcon & { src: string }>();
   useEffect(() => {
     if (!src) return;
     let current = true;
-    void isBrowserPlaceholder(src).then((placeholder) => current && setVerdict({ src, real: !placeholder }));
+    void inspectBrowserIcon(src).then((icon) => current && setVerdict({ ...icon, src }));
     return () => {
       current = false;
     };
   }, [src]);
-  return !!verdict && verdict.src === src && verdict.real;
+  return verdict?.src === src ? verdict : undefined;
 }
 
 /**
@@ -54,12 +61,19 @@ export function Favicon({ url, title, size = 20 }: { url: string; title: string;
   const cachedSrc = useObjectUrl(row?.status === 'ok' ? row.blob : undefined);
 
   const browserSrc = origin && USES_BROWSER_CACHE ? browserFaviconSrc(url, size >= 20 ? 32 : 16) : undefined;
-  const realBrowserIcon = useIsRealIcon(browserSrc);
-  const src = !origin ? undefined : USES_BROWSER_CACHE ? (realBrowserIcon ? browserSrc : undefined) : cachedSrc;
+  const browserIcon = useBrowserIcon(browserSrc);
+  const src = !origin
+    ? undefined
+    : USES_BROWSER_CACHE
+      ? browserIcon && !browserIcon.placeholder
+        ? browserSrc
+        : undefined
+      : cachedSrc;
   if (!src || src === brokenSrc) return <Tile title={title} url={url} size={size} />;
 
-  // Dark glyphs on transparent backgrounds need a light plate on the dark theme (the CSS variable is empty in light).
-  const plate = USES_BROWSER_CACHE || row?.needsPlate;
+  // Only dark glyphs on a transparent background need a light plate on the dark theme (the CSS variable is
+  // empty in light). An icon with its own background is shown as designed, with no frame.
+  const plate = USES_BROWSER_CACHE ? browserIcon?.needsPlate : row?.needsPlate;
   return (
     <img
       src={src}

@@ -275,7 +275,6 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
           {!compact && (
             <div className="mb-2 flex items-center justify-between border-b border-control px-1 pb-2 text-[13px] text-muted">
               <span>Title</span>
-              <span>Created At</span>
             </div>
           )}
 

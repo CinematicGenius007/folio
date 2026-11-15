@@ -187,6 +187,39 @@ try {
   await dashboardTab.waitForURL('**/dashboard.html');
   check('0 opens the dashboard from a page that cannot be saved', true);
 
+  // ---- icons: only a dark glyph on a transparent background is drawn on a light plate ----
+  for (const path of ['/tile', '/glyph']) {
+    const visited = await context.newPage();
+    await visited.goto(`${server.origin}${path}`);
+    await sleep(1500); // lets Chromium fetch and cache the page's icon
+    await visited.close();
+  }
+  await inWorker(async (origin) => {
+    const other = (await chrome.bookmarks.getTree())[0].children[1];
+    await chrome.bookmarks.create({ parentId: other.id, title: 'Tile icon site', url: `${origin}/tile` });
+    await chrome.bookmarks.create({ parentId: other.id, title: 'Glyph icon site', url: `${origin}/glyph` });
+  }, server.origin);
+  await sleep(1200);
+  const icons = await context.newPage();
+  await icons.emulateMedia({ colorScheme: 'dark' });
+  await icons.goto(`${base}/dashboard.html`);
+  await icons.waitForSelector('[role=option]');
+  await sleep(1500);
+  const plateOf = (title) =>
+    icons.evaluate((t) => {
+      const img = [...document.querySelectorAll('[role=option]')]
+        .find((r) => r.textContent.includes(t))
+        ?.querySelector('img');
+      return img ? getComputedStyle(img).backgroundColor : null;
+    }, title);
+  const [glyphPlate, tilePlate] = [await plateOf('Glyph icon site'), await plateOf('Tile icon site')];
+  check(
+    'a dark glyph on a transparent background is drawn on a light plate',
+    glyphPlate && glyphPlate !== 'rgba(0, 0, 0, 0)',
+    String(glyphPlate),
+  );
+  check('a dark icon that fills its square gets no white frame', tilePlate === 'rgba(0, 0, 0, 0)', String(tilePlate));
+
   // ---- no runtime errors anywhere ----
   check('no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '));
 } catch (error) {

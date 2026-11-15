@@ -1,0 +1,12 @@
+*.log
+.DS_Store
+.env
+.output
+.output-test
+.wxt
+e2e/shots
+node_modules
+
+# website build
+site/dist
+.impeccable

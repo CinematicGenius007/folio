@@ -31,6 +31,12 @@ for (const name of built) {
     fail(`${name}: unexpected host_permissions ${JSON.stringify(manifest.host_permissions)}`);
   if (manifest.web_accessible_resources) fail(`${name}: web_accessible_resources must not be set in a release build`);
   if (manifest.content_scripts) fail(`${name}: Folio has no content scripts`);
+  if (name === 'firefox-mv2') {
+    // addons.mozilla.org rejects new add-ons without this, and it is a promise we keep (docs/PRIVACY.md).
+    const declared = manifest.browser_specific_settings?.gecko?.data_collection_permissions;
+    if (JSON.stringify(declared) !== JSON.stringify({ required: ['none'] }))
+      fail(`${name}: data_collection_permissions must be {"required":["none"]}, got ${JSON.stringify(declared)}`);
+  }
 
   // The background must not contain the test-only code that opens extension pages as tabs.
   const background = readFileSync(`${root}${name}/background.js`, 'utf8');

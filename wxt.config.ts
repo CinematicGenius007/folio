@@ -38,7 +38,17 @@ export default defineConfig({
         },
       },
       ...(firefox
-        ? { browser_specific_settings: { gecko: { id: 'folio@cinematicgenius007.com', strict_min_version: '121.0' } } }
+        ? {
+            browser_specific_settings: {
+              gecko: {
+                id: 'folio@cinematicgenius007.com',
+                // data_collection_permissions needs Firefox 140; addons.mozilla.org requires it on new add-ons.
+                strict_min_version: '140.0',
+                // Folio collects and transmits no personal data (see docs/PRIVACY.md).
+                data_collection_permissions: { required: ['none'] },
+              },
+            },
+          }
         : {}),
     };
   },

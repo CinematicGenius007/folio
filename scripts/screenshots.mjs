@@ -6,42 +6,11 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { SAMPLE } from './sample-data.mjs';
 
 const extensionPath = fileURLToPath(new URL('../.output-test/chrome-mv3', import.meta.url));
 const outDir = fileURLToPath(new URL('../docs/screenshots/', import.meta.url));
 mkdirSync(outDir, { recursive: true });
-
-const SAMPLE = {
-  Design: {
-    Inspiration: [
-      ['Siteinspire — web design inspiration', 'https://siteinspire.com/'],
-      ['Awwwards — website awards', 'https://awwwards.com/'],
-      ['Dribbble — discover the world’s top designers', 'https://dribbble.com/'],
-    ],
-    Typography: [
-      ['Geist — a new font family for Vercel', 'https://vercel.com/font'],
-      ['Fontshare — free quality fonts', 'https://fontshare.com/'],
-    ],
-    _: [['Radix Colors — an open-source color system', 'https://radix-ui.com/colors']],
-  },
-  'Dev Tech': {
-    Rust: [
-      ['Tokio — an asynchronous Rust runtime', 'https://tokio.rs/'],
-      ['Actix Web — a powerful Rust framework', 'https://actix.rs/'],
-    ],
-    _: [
-      ['Vite — next generation frontend tooling', 'https://vite.dev/'],
-      ['WXT — next-gen web extension framework', 'https://wxt.dev/'],
-      ['Dexie.js — a minimalistic IndexedDB wrapper', 'https://dexie.org/'],
-    ],
-  },
-  Reading: {
-    _: [
-      ['The Importance of Sketching with Code', 'https://gorillasun.de/'],
-      ['Machine Learning Visualized', 'https://ml-visualized.com/'],
-    ],
-  },
-};
 
 const profile = mkdtempSync(join(tmpdir(), 'folio-shots-'));
 const context = await chromium.launchPersistentContext(profile, {

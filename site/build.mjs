@@ -99,6 +99,7 @@ const footer = () => `<footer>
   <ul>
     <li><a href="/docs">Documentation</a></li>
     <li><a href="/docs/privacy">Privacy</a></li>
+    <li><a href="/docs/privacy#chrome-web-store-user-data-policy">Chrome data policy</a></li>
     <li><a href="${REPO}" rel="noopener">GitHub</a></li>
     <li><a href="${REPO}/blob/main/LICENSE" rel="noopener">MIT License</a></li>
     <li><a href="mailto:${EMAIL}">${EMAIL}</a></li>

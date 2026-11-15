@@ -49,6 +49,7 @@
     "e2e:chromium": "pnpm build:test && node e2e/chromium.e2e.mjs",
     "e2e:firefox": "pnpm build:test:firefox && node e2e/firefox.e2e.mjs",
     "screenshots": "pnpm build:test && node scripts/screenshots.mjs",
+    "store-assets": "pnpm build:test && node scripts/store-assets.mjs",
     "icons": "node scripts/generate-icons.mjs",
     "zip:firefox": "wxt zip -b firefox",
     "verify:build": "node scripts/verify-build.mjs"

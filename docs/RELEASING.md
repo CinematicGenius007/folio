@@ -49,7 +49,7 @@ A copy installed before `update_url` existed cannot update itself. Install one r
 
 ## Chromium (Dia, Chrome, Brave)
 
-The release attaches `folio-<version>-chrome.zip`. Without a store listing, unzip it and use **Load unpacked** (see [INSTALL.md](INSTALL.md)); it does not auto-update. For private distribution with updates, use the Chrome Web Store's **Private** (trusted testers) or **Unlisted** visibility: upload the same zip there.
+The release attaches `folio-<version>-chrome.zip`. Without a store listing, unzip it and use **Load unpacked** (see [INSTALL.md](INSTALL.md)); it does not auto-update. For private distribution with updates, use the Chrome Web Store's **Private** (trusted testers) or **Unlisted** visibility: upload the same zip there, using the text and images in [CHROME-STORE.md](CHROME-STORE.md).
 
 ## Checks before tagging
 

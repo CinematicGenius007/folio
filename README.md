@@ -109,6 +109,7 @@ User guides live on the website, [folio.cinematicgenius007.com/docs](https://fol
 - [Testing](docs/TESTING.md): unit tests, end-to-end tests, testing on Zen
 - [Design](docs/DESIGN.md): themes, colour tokens, interaction principles
 - [Privacy](docs/PRIVACY.md): permissions and network behaviour
+- [Chrome Web Store listing](docs/CHROME-STORE.md): listing text, permission justifications, images
 - [Releasing](docs/RELEASING.md): private signing, automatic updates, cutting a release
 - [Security policy](SECURITY.md) · [Code of conduct](CODE_OF_CONDUCT.md) · [Changelog](CHANGELOG.md)
 

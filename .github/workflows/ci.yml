@@ -13,6 +13,30 @@ permissions:
   contents: read
 
 jobs:
+  # Decides which of the slower jobs a change needs. Format, lint, types and unit tests below always run: they take
+  # seconds and Prettier checks every file, docs included. See .github/scripts/changed-paths.sh for the rules.
+  changes:
+    name: Which parts changed
+    runs-on: ubuntu-latest
+    outputs:
+      extension: ${{ steps.paths.outputs.extension }}
+      site: ${{ steps.paths.outputs.site }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: paths
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # With no usable base (a new branch, a forced push), assume everything changed.
+          if [ -z "$BASE" ] || [ "$BASE" = 0000000000000000000000000000000000000000 ] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            printf 'extension=true\nsite=true\n' >> "$GITHUB_OUTPUT"
+          else
+            git diff --name-only "$BASE" HEAD | .github/scripts/changed-paths.sh >> "$GITHUB_OUTPUT"
+          fi
+          cat "$GITHUB_OUTPUT"
+
   check:
     name: Format, lint, types, unit tests
     runs-on: ubuntu-latest
@@ -31,6 +55,8 @@ jobs:
 
   build:
     name: Build ${{ matrix.browser }}
+    needs: changes
+    if: needs.changes.outputs.extension == 'true'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -57,6 +83,8 @@ jobs:
 
   site:
     name: Website build
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -75,7 +103,8 @@ jobs:
     name: End-to-end (Chromium)
     # Pinned: Playwright's Chromium build does not support ubuntu-latest (26.04) yet.
     runs-on: ubuntu-24.04
-    needs: check
+    needs: [check, changes]
+    if: needs.changes.outputs.extension == 'true'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
@@ -90,7 +119,8 @@ jobs:
   e2e-firefox:
     name: End-to-end (Firefox)
     runs-on: ubuntu-latest
-    needs: check
+    needs: [check, changes]
+    if: needs.changes.outputs.extension == 'true'
     # Runs the same suite as Zen, on Firefox. Kept non-blocking until it has a track record on CI.
     continue-on-error: true
     steps:

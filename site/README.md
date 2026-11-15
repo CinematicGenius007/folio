@@ -39,6 +39,10 @@ Import the repository and set **Root Directory** to `site`. `vercel.json` sets t
 clean URLs, long-lived caching for `/assets` and `/fonts`, and security headers (a strict CSP that allows no scripts).
 Add `folio.cinematicgenius007.com` under the project's domains.
 
+Vercel skips builds that cannot change the site: `ignoreCommand` runs `scripts/vercel-ignore.sh`, which compares against the last built
+commit and skips only when nothing under `site/` or the root `package.json` (its version feeds the site's metadata) changed. If it cannot
+tell, it builds.
+
 ## SEO and answer engines
 
 - Every page has a unique title, description, canonical URL, Open Graph and Twitter card.

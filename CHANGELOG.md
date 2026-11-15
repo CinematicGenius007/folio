@@ -4,6 +4,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Changed
+
+- CI and Vercel skip work a change does not need: browser builds and end-to-end tests run only for extension changes, the website build only for site changes.
+- Updated GitHub Actions (checkout 7, setup-node 7, upload-artifact 7, pnpm/action-setup 6, action-gh-release 3), TypeScript 6 and Playwright 1.65.
+
 ## [0.1.2] - 2026-11-16
 
 ### Changed

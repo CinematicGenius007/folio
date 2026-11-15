@@ -1,0 +1,20 @@
+name: Feature request or suggestion
+description: An idea to make Folio better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: Describe the situation first. The solution can come after.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What do you imagine?
+      description: A sketch or a screenshot helps. Mention keyboard shortcuts if they matter.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

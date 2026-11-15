@@ -1,0 +1,197 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+/* Overcast (light). Tokens come from the Paper file; see color-system artboard. */
+:root {
+  --ground: #fdfdff;
+  --sunken: #f5f7fb;
+  --surface: #edeff3;
+  --select: #e6e8ec;
+  --pressed: #dee0e4;
+  --hover: #f6f6f9;
+  --line: #ebebee;
+  --line-hover: #dddde1;
+  --control: #00000014;
+  --ink: #2b2b31;
+  --ink-soft: #46464e;
+  --muted: #5c5c66;
+  --faint: #8a8a94;
+  --primary: #52525c;
+  --on-primary: #fdfdff;
+  --ring: #8a8a94;
+  --keycap: #0000000a;
+  --danger: #b63132;
+  --danger-bg: #ffefee;
+  --danger-border: #eeb3ad;
+  --danger-text: #822b2a;
+  --warn-bg: #fdf2dd;
+  --warn-text: #634800;
+  --ok-bg: #e6fae9;
+  --ok-text: #015e28;
+  --shadow: 0 8px 30px #0000001a, 0 0 0 1px #0000000d;
+  --coll-red: #d15c56;
+  --coll-yellow: #988707;
+  --coll-green: #2e9e52;
+  --coll-teal: #0d9999;
+  --coll-blue: #2f8adc;
+  --coll-violet: #8e71d6;
+  --coll-pink: #c35c9b;
+  --coll-slate: #6d6f72;
+  --tile-red: #a43b38;
+  --tile-yellow: #716408;
+  --tile-green: #097736;
+  --tile-teal: #0d7272;
+  --tile-blue: #0465af;
+  --tile-violet: #6a4fa9;
+  --tile-pink: #983c75;
+  --tile-slate: #5f6064;
+  --tile-ink: #ffffff;
+  --plate: transparent;
+  color-scheme: light;
+}
+
+/* Dusk (dark): lifted charcoal, neutral accent, dithered ground. */
+:root[data-theme='dark'] {
+  --ground: #1f1f23;
+  --sunken: #232327;
+  --surface: #2a2a2f;
+  --select: #313137;
+  --pressed: #38383f;
+  --hover: #2a2a2f;
+  --line: #37373d;
+  --line-hover: #45454c;
+  --control: #ffffff1f;
+  --ink: #e9e9ed;
+  --ink-soft: #c6c6cd;
+  --muted: #a3a3ac;
+  --faint: #8b8b94;
+  --primary: #c6c6cd;
+  --on-primary: #1f1f23;
+  --ring: #8b8b94;
+  --keycap: #ffffff14;
+  --danger: #f66d67;
+  --danger-bg: #331513;
+  --danger-border: #6b2a26;
+  --danger-text: #feb5ae;
+  --warn-bg: #2d2d33;
+  --warn-text: #c6c6cd;
+  --ok-bg: #0b2612;
+  --ok-text: #95dfa4;
+  --shadow: 0 8px 30px #00000066, 0 0 0 1px #ffffff1a;
+  --coll-red: #f98f87;
+  --coll-yellow: #c4b345;
+  --coll-green: #6fc884;
+  --coll-teal: #21c9c9;
+  --coll-blue: #70b6fd;
+  --coll-violet: #b7a0fb;
+  --coll-pink: #eb8ec4;
+  --coll-slate: #83807a;
+  --tile-red: #fb9890;
+  --tile-yellow: #c9b957;
+  --tile-green: #7ccd8e;
+  --tile-teal: #3bcfcf;
+  --tile-blue: #7cbdfe;
+  --tile-violet: #bda8fc;
+  --tile-pink: #ee97c9;
+  --tile-slate: #95928b;
+  --tile-ink: #1f1f23;
+  --plate: #e9e9ed;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-sunken: var(--sunken);
+  --color-surface: var(--surface);
+  --color-select: var(--select);
+  --color-pressed: var(--pressed);
+  --color-hover: var(--hover);
+  --color-line: var(--line);
+  --color-control: var(--control);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-primary: var(--primary);
+  --color-on-primary: var(--on-primary);
+  --color-ring: var(--ring);
+  --color-keycap: var(--keycap);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-border: var(--danger-border);
+  --color-danger-text: var(--danger-text);
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-text: var(--warn-text);
+  --color-ok-bg: var(--ok-bg);
+  --color-ok-text: var(--ok-text);
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+* {
+  box-sizing: border-box;
+}
+:focus {
+  outline: none;
+}
+.ring-focus,
+:focus-visible {
+  box-shadow: 0 0 0 1px var(--ring);
+}
+input:focus-visible,
+textarea:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 14%, transparent);
+}
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  height: 20px;
+  min-width: 20px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: var(--keycap);
+  color: var(--muted);
+  font: 500 12px var(--font-mono);
+}
+::-webkit-scrollbar {
+  width: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line-hover);
+  border-radius: 8px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.bg-primary .kbd {
+  background: #ffffff26;
+  color: var(--on-primary);
+}
+:root[data-theme='dark'] .bg-primary .kbd {
+  background: #0000001f;
+}
+
+[role='listbox']:focus-visible,
+[role='menu']:focus-visible {
+  box-shadow: none;
+}
+[role^='menuitem']:focus-visible {
+  box-shadow: none;
+}

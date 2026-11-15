@@ -1,0 +1,40 @@
+name: Bug report
+description: Something does not work the way it should
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the dashboard
+        2. Press C and type a folder name
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser
+      options: [Chrome, Edge, Brave, Arc, Dia, Other Chromium, Firefox, Zen]
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Browser and Folio versions
+      placeholder: 'Zen 1.24, Folio 0.1.0'
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, console errors (open the extension page, then dev tools), or how many bookmarks you have.

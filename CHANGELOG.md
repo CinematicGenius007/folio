@@ -6,6 +6,8 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Added
 
+- Press `0` in the popup, or use the _Open Folio_ button, to open the dashboard from any page, including pages Folio cannot save (new tab, browser pages). Previously only the saved-page popup offered it.
+
 - **Meadow** background: a quiet, grainy dusk meadow along the page edges that keeps the list calm, in both themes.
 - Website at folio.cinematicgenius007.com with user documentation (`site/`): static HTML, no client JavaScript, deployable on Vercel.
 - The folder breadcrumb starts at _All bookmarks_, folds long paths behind `…`, and is a labelled navigation landmark for screen readers.

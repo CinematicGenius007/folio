@@ -166,10 +166,26 @@ try {
 
   await popup.keyboard.press('Backspace');
   await sleep(1000);
+  check(
+    'popup offers Open Folio while saving a page',
+    (await popup.locator('button', { hasText: 'Open Folio' }).count()) === 1,
+  );
   await popup.keyboard.press('z');
   await sleep(1000);
   const restored = await inWorker(async (url) => (await chrome.bookmarks.search({ url })).length, `${server.origin}/`);
   check('popup Remove then Z restores the bookmark', restored === 1);
+
+  // a page Folio cannot save still leads to the dashboard, by key
+  await page.goto('about:blank');
+  const unsavable = await context.newPage();
+  await unsavable.goto(`${base}/popup.html`);
+  await unsavable.waitForSelector('text=Folio can save http and https pages.');
+  const dashboardOpened = context.waitForEvent('page');
+  // the popup closes itself on this key, which can surface as an error on the press that triggered it
+  await unsavable.keyboard.press('0').catch(() => {});
+  const dashboardTab = await dashboardOpened;
+  await dashboardTab.waitForURL('**/dashboard.html');
+  check('0 opens the dashboard from a page that cannot be saved', true);
 
   // ---- no runtime errors anywhere ----
   check('no uncaught page errors', pageErrors.length === 0, pageErrors.join(' | '));

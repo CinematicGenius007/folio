@@ -20,6 +20,8 @@ Uninstalling the extension removes all of the above. Your bookmarks are untouche
 | Chromium family | **None.** Icons come from the browser's own cache.                                                                                |
 | Firefox and Zen | Fetches each bookmarked site's favicon **directly from that site** (its HTML to find the icon link, then the icon). Nothing else. |
 
+Builds signed for private distribution also carry an update address on `folio.cinematicgenius007.com`. Firefox itself, not Folio, requests that small file about once a day to see whether a newer version exists; it contains no information about you and the site sets no cookies. Builds you make yourself have no update address.
+
 Details of the Firefox/Zen fetcher:
 
 - Requests are made without cookies and without a referrer.

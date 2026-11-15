@@ -6,6 +6,7 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Added
 
+- Private distribution with automatic updates on Firefox and Zen: the release workflow signs an unlisted build with Mozilla, attaches it to the GitHub release, and publishes `updates.json` on the website. See `docs/RELEASING.md`.
 - Press `0` in the popup, or use the _Open Folio_ button, to open the dashboard from any page, including pages Folio cannot save (new tab, browser pages). Previously only the saved-page popup offered it.
 
 - **Meadow** background: a quiet, grainy dusk meadow along the page edges that keeps the list calm, in both themes.

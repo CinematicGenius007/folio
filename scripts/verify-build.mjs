@@ -36,6 +36,12 @@ for (const name of built) {
     const declared = manifest.browser_specific_settings?.gecko?.data_collection_permissions;
     if (JSON.stringify(declared) !== JSON.stringify({ required: ['none'] }))
       fail(`${name}: data_collection_permissions must be {"required":["none"]}, got ${JSON.stringify(declared)}`);
+    // A self-hosted update address must be exactly what the release asked for, and absent from every other build.
+    const updateUrl = manifest.browser_specific_settings?.gecko?.update_url;
+    if (updateUrl !== process.env.FOLIO_UPDATE_URL && !(updateUrl === undefined && !process.env.FOLIO_UPDATE_URL))
+      fail(
+        `${name}: update_url is ${JSON.stringify(updateUrl)}, expected ${JSON.stringify(process.env.FOLIO_UPDATE_URL)}`,
+      );
   }
 
   // The background must not contain the test-only code that opens extension pages as tabs.

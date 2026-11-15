@@ -4,6 +4,13 @@ import { defineConfig } from 'wxt';
 /** Test builds (`VITE_FOLIO_TEST=1`) add the `tabs` permission and let the icon fetcher reach localhost; see docs/TESTING.md. */
 const TEST_BUILD = process.env.VITE_FOLIO_TEST === '1';
 
+/**
+ * Where Firefox and Zen look for new versions of a self-distributed (unlisted) build. Set only by the release
+ * workflow; see docs/RELEASING.md. Must be https.
+ */
+const UPDATE_URL = process.env.FOLIO_UPDATE_URL;
+if (UPDATE_URL && !UPDATE_URL.startsWith('https://')) throw new Error('FOLIO_UPDATE_URL must be an https URL');
+
 export default defineConfig({
   outDir: TEST_BUILD ? '.output-test' : '.output',
   modules: ['@wxt-dev/module-react'],
@@ -46,6 +53,9 @@ export default defineConfig({
                 strict_min_version: '140.0',
                 // Folio collects and transmits no personal data (see docs/PRIVACY.md).
                 data_collection_permissions: { required: ['none'] },
+                // Only for builds signed for self-distribution (the release workflow sets it); addons.mozilla.org
+                // listed add-ons must not have one.
+                ...(UPDATE_URL && { update_url: UPDATE_URL }),
               },
             },
           }

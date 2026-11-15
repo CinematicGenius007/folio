@@ -37,7 +37,6 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "compile": "tsc --noEmit",
-    "e2e:zen": "VITE_FOLIO_TEST=1 wxt build -b firefox && node e2e/zen-full.mjs && node e2e/zen-live.mjs",
     "test": "vitest run",
     "postinstall": "wxt prepare",
     "lint": "eslint .",

@@ -1,7 +1,18 @@
 {
   "addons": {
     "folio@cinematicgenius007.com": {
-      "updates": []
+      "updates": [
+        {
+          "version": "0.1.1",
+          "update_link": "https://github.com/CinematicGenius007/folio/releases/download/v0.1.1/folio-0.1.1.xpi",
+          "update_hash": "sha256:97078144599031382f7a5b3cc33abbdff810528065e4dac8fae285cfa4cce305",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "140.0"
+            }
+          }
+        }
+      ]
     }
   }
 }

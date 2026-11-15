@@ -11,6 +11,16 @@
               "strict_min_version": "140.0"
             }
           }
+        },
+        {
+          "version": "0.1.2",
+          "update_link": "https://github.com/CinematicGenius007/folio/releases/download/v0.1.2/folio-0.1.2.xpi",
+          "update_hash": "sha256:fc48e5eba50a472a4b015c013ffeb666a094de907b3b24c634b9207023cd0eed",
+          "applications": {
+            "gecko": {
+              "strict_min_version": "140.0"
+            }
+          }
         }
       ]
     }

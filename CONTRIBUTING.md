@@ -4,6 +4,8 @@ Thanks for helping. Folio is small on purpose, so contributions that keep it fas
 Bugs, ideas and questions are all welcome: open an [issue](https://github.com/CinematicGenius007/folio/issues) or email
 [folio@cinematicgenius007.com](mailto:folio@cinematicgenius007.com).
 
+Using an AI coding agent? Point it at [AGENTS.md](AGENTS.md); it holds the project's working rules, release procedure and gotchas.
+
 By taking part you agree to the [Code of Conduct](CODE_OF_CONDUCT.md). Contributions are licensed under the [MIT License](LICENSE).
 
 ## Set up

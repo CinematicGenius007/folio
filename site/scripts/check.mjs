@@ -7,6 +7,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { pathToRegexp } from 'path-to-regexp';
 
 const DIST = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
 const problems = [];
@@ -83,6 +84,17 @@ try {
   }
 } catch {
   problems.push('updates.json is missing or is not a valid update manifest');
+}
+
+// Vercel rejects the whole deployment if a header `source` is not valid path-to-regexp syntax (for example a
+// capture group nested inside another group), so parse every pattern here, where CI can catch it.
+const vercel = JSON.parse(readFileSync(join(DIST, '..', 'vercel.json'), 'utf8'));
+for (const { source } of vercel.headers ?? []) {
+  try {
+    pathToRegexp(source);
+  } catch (error) {
+    problems.push(`vercel.json: invalid header source ${source}: ${error.message}`);
+  }
 }
 
 if (problems.length) {

@@ -109,6 +109,7 @@ and `site/README.md` describes it.
 
 ## Where things stand (snapshot; verify before relying on it)
 
-As of 2026-11-16: v0.1.1 is signed and released; v0.1.2 is the next release. Firefox/Zen private distribution with automatic updates
-works. Chromium is distributed by loading it unpacked; the Chrome Web Store developer registration fee has not been paid yet (a payments
-error), so the store kit in `docs/CHROME-STORE.md` is ready but not submitted. Dependabot PRs may be waiting for review.
+As of 2026-11-16: v0.1.2 is the latest release (signed, on GitHub, listed in `updates.json`). Firefox/Zen private distribution with automatic
+updates works end to end, including the first one made by the Release workflow. Chromium is distributed by loading it unpacked; the Chrome Web
+Store developer registration fee has not been paid yet (a payments error), so the store kit in `docs/CHROME-STORE.md` is ready but not
+submitted. Dependabot PRs may be waiting for review.

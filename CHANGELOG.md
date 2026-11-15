@@ -4,10 +4,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-16
+
 ### Changed
 
-- The list header no longer shows a "Created At" label; the dates stay in the rows.
-- README screenshots show the Meadow background in both themes.
+- README screenshots show the Meadow background in the dark theme.
 
 ### Fixed
 

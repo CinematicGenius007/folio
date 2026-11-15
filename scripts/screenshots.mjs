@@ -74,7 +74,7 @@ try {
   const page = await context.newPage();
   await page.goto('https://example.com/').catch(() => {});
   for (const [scheme, name] of [
-    ['light', 'popup-save'],
+    ['dark', 'popup-save'],
     ['dark', 'popup-saved'],
   ]) {
     const popup = await context.newPage();

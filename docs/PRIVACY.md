@@ -43,6 +43,10 @@ Details of the Firefox/Zen fetcher:
 
 Folio does **not** request `history`, `cookies`, `webRequest`, `scripting`, `downloads` or `storage`, and has no content scripts: it never reads or changes the pages you browse.
 
+## Chrome Web Store user data policy
+
+The use of information received from Chrome APIs will adhere to the [Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq), including the Limited Use requirements. Folio uses bookmark data only to provide its bookmark features, never transfers it, and never uses it for advertising or unrelated purposes.
+
 ## Safety measures
 
 - Only `http`, `https` and `ftp` bookmarks are opened. `javascript:`, `data:`, `file:` and browser-internal URLs are shown but never navigated to.

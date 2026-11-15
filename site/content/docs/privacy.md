@@ -55,6 +55,10 @@ Folio does not ask for `history`, `cookies`, `webRequest`, `scripting` or `downl
 - Only `http`, `https` and `ftp` links are opened or saved. `javascript:`, `data:` and `file:` links are shown but never followed.
 - Backup files are size-limited and checked field by field before anything is restored.
 
+## Chrome Web Store user data policy
+
+The use of information received from Chrome APIs will adhere to the [Chrome Web Store User Data Policy](https://developer.chrome.com/docs/webstore/program-policies/user-data-faq), including the Limited Use requirements. Folio uses bookmark data only to provide its bookmark features, never transfers it, and never uses it for advertising or unrelated purposes.
+
 ## This website
 
 This site has no cookies, no analytics and no scripts. Questions: [folio@cinematicgenius007.com](mailto:folio@cinematicgenius007.com).

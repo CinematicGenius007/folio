@@ -58,6 +58,10 @@ cd site && npm run build   # website into site/dist and run its link/SEO/headers
 - Work on a branch, open a PR, wait for CI, then merge with a **merge commit** (`gh pr merge N --merge`). Delete the branch afterwards.
   CI: format/lint/types/unit tests, build chrome, build firefox, website build, e2e Chromium (pinned to `ubuntu-24.04` because Playwright
   does not support the newer `ubuntu-latest`), e2e Firefox (non-blocking), plus Vercel previews.
+  **CI runs only what a change needs**: format/lint/types/unit tests always run (quick, and Prettier checks every file); the browser builds
+  and e2e run only for extension paths, the website build only for `site/` (or the root `package.json`, whose version the site publishes);
+  anything under `.github/` runs everything. The rules are in `.github/scripts/changed-paths.sh` (tested). Vercel skips builds the same way
+  via `site/scripts/vercel-ignore.sh` (`ignoreCommand` in `site/vercel.json`). The Release workflow only ever runs on `v*` tags.
 - **Identity.** Commits use `folio@cinematicgenius007.com` (repo-local git config), never a personal address. Check `git config user.email`
   before committing. Commit messages explain why.
 - **GitHub account.** The `gh` CLI's active account may not have push rights. Use the owner for repo operations without switching:

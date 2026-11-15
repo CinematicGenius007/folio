@@ -12,10 +12,7 @@
 </p>
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dashboard-dark.jpg" />
-    <img src="docs/screenshots/dashboard-light.jpg" alt="Folio dashboard with the Meadow background" width="760" />
-  </picture>
+  <img src="docs/screenshots/dashboard-dark.jpg" alt="Folio dashboard in the dark theme with the Meadow background" width="760" />
 </p>
 
 Folio does not keep a second copy of your bookmarks. It reads and writes the browser's **native bookmark tree**, so
@@ -39,7 +36,7 @@ Works in **Chrome, Edge, Brave, Arc, Dia and other Chromium browsers**, and in *
 
 <p align="center">
   <img src="docs/screenshots/popup-save.png" alt="The save popup" width="190" />
-  <img src="docs/screenshots/popup-saved.png" alt="The popup for an already saved page, dark" width="190" />
+  <img src="docs/screenshots/popup-saved.png" alt="The popup for an already saved page" width="190" />
 </p>
 
 ## Install

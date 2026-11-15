@@ -2,6 +2,7 @@ import { db } from '@/lib/core/db';
 import type { FaviconRow } from '@/lib/core/types';
 import { originOf } from '@/lib/util/url';
 import { parseIconLinks } from './links';
+import { needsPlate } from './measure';
 import { isFetchableUrl } from './network';
 
 /** A found icon is trusted for 30 days; a miss is retried after 7 so dead sites are not hammered. */
@@ -79,8 +80,8 @@ export async function fetchLimited(url: string, maxBytes: number, init: RequestI
 }
 
 /**
- * Shrinks a raster icon to {@link STORED_SIZE} and measures it. `needsPlate` is true for dark
- * glyphs on a transparent background, which disappear on a dark theme unless drawn on a light plate.
+ * Shrinks a raster icon to {@link STORED_SIZE} and measures it (see {@link needsPlate}: dark glyphs on a
+ * transparent background disappear on a dark theme unless drawn on a light plate).
  * SVGs are stored untouched.
  */
 async function normalizeIcon(blob: Blob): Promise<{ blob: Blob; needsPlate: boolean }> {
@@ -94,16 +95,8 @@ async function normalizeIcon(blob: Blob): Promise<{ blob: Blob; needsPlate: bool
     const ctx = canvas.getContext('2d');
     if (!ctx) return { blob, needsPlate: false };
     ctx.drawImage(bitmap, 0, 0, w, h);
-    const pixels = ctx.getImageData(0, 0, w, h).data;
-    let luminance = 0;
-    let opaque = 0;
-    for (let i = 0; i < pixels.length; i += 4) {
-      if ((pixels[i + 3] ?? 0) < 128) continue;
-      luminance += 0.2126 * (pixels[i] ?? 0) + 0.7152 * (pixels[i + 1] ?? 0) + 0.0722 * (pixels[i + 2] ?? 0);
-      opaque++;
-    }
-    const mean = opaque ? luminance / opaque / 255 : 1;
-    return { blob: await canvas.convertToBlob({ type: 'image/png' }), needsPlate: mean < 0.28 };
+    const plate = needsPlate(ctx.getImageData(0, 0, w, h).data);
+    return { blob: await canvas.convertToBlob({ type: 'image/png' }), needsPlate: plate };
   } catch {
     return { blob, needsPlate: false };
   }

@@ -2,34 +2,35 @@
 import http from 'node:http';
 import { deflateSync } from 'node:zlib';
 
-/** A solid-colour PNG of the given size, built without dependencies. */
-export function solidPng(width, height, [r, g, b]) {
-  const crcTable = Array.from({ length: 256 }, (_, n) => {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    return c >>> 0;
-  });
-  const crc = (buf) => {
-    let c = 0xffffffff;
-    for (const byte of buf) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
-    return (c ^ 0xffffffff) >>> 0;
-  };
-  const chunk = (type, data) => {
-    const length = Buffer.alloc(4);
-    length.writeUInt32BE(data.length);
-    const body = Buffer.concat([Buffer.from(type), data]);
-    const sum = Buffer.alloc(4);
-    sum.writeUInt32BE(crc(body));
-    return Buffer.concat([length, body, sum]);
-  };
+const crcTable = Array.from({ length: 256 }, (_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+const crc = (buf) => {
+  let c = 0xffffffff;
+  for (const byte of buf) c = crcTable[(c ^ byte) & 0xff] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+const chunk = (type, data) => {
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
+  const body = Buffer.concat([Buffer.from(type), data]);
+  const sum = Buffer.alloc(4);
+  sum.writeUInt32BE(crc(body));
+  return Buffer.concat([length, body, sum]);
+};
+
+/** A PNG built without dependencies. `pixel(x, y)` returns `[r, g, b, a]`. */
+export function rgbaPng(width, height, pixel) {
   const header = Buffer.alloc(13);
   header.writeUInt32BE(width, 0);
   header.writeUInt32BE(height, 4);
   header[8] = 8;
-  header[9] = 2;
-  const rows = Buffer.alloc((width * 3 + 1) * height);
+  header[9] = 6; // RGBA
+  const rows = Buffer.alloc((width * 4 + 1) * height);
   for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) rows.set([r, g, b], y * (width * 3 + 1) + 1 + x * 3);
+    for (let x = 0; x < width; x++) rows.set(pixel(x, y), y * (width * 4 + 1) + 1 + x * 4);
   }
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
@@ -38,6 +39,24 @@ export function solidPng(width, height, [r, g, b]) {
     chunk('IEND', Buffer.alloc(0)),
   ]);
 }
+
+/** A solid-colour opaque PNG of the given size. */
+export const solidPng = (width, height, [r, g, b]) => rgbaPng(width, height, () => [r, g, b, 255]);
+
+/** A dark icon that fills its square, apart from rounded corners: a finished design on its own background. */
+const darkTilePng = () =>
+  rgbaPng(32, 32, (x, y) => {
+    const dx = Math.max(0, 5 - x, x - 26);
+    const dy = Math.max(0, 5 - y, y - 26);
+    return dx * dx + dy * dy > 25 ? [0, 0, 0, 0] : [22, 32, 54, 255];
+  });
+
+/** A dark ring on a transparent background, like a black logo: invisible on a dark theme without a plate. */
+const darkGlyphPng = () =>
+  rgbaPng(32, 32, (x, y) => {
+    const d = Math.hypot(x - 15.5, y - 15.5);
+    return d > 6 && d < 11 ? [10, 10, 10, 255] : [0, 0, 0, 0];
+  });
 
 /** Starts the fixture server on a free port. Returns its origin and a `close()`. */
 export async function startFixtureServer() {
@@ -49,6 +68,19 @@ export async function startFixtureServer() {
     if (req.url === '/favicon.ico') {
       res.setHeader('content-type', 'image/png');
       return res.end(solidPng(32, 32, [47, 138, 220]));
+    }
+    for (const [name, png] of [
+      ['tile', darkTilePng],
+      ['glyph', darkGlyphPng],
+    ]) {
+      if (req.url === `/${name}-icon.png`) {
+        res.setHeader('content-type', 'image/png');
+        return res.end(png());
+      }
+      if (req.url === `/${name}`) {
+        res.setHeader('content-type', 'text/html');
+        return res.end(`<title>${name}</title><link rel="icon" href="/${name}-icon.png">hello`);
+      }
     }
     res.setHeader('content-type', 'text/html');
     res.end('<title>Fixture Page</title><link rel="icon" href="/declared-icon.png" sizes="128x128">hello');

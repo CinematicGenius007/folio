@@ -12,7 +12,10 @@
 </p>
 
 <p align="center">
-  <img src="docs/screenshots/dashboard-light.jpg" alt="Folio dashboard in the light theme, Overcast" width="760" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/dashboard-dark.jpg" />
+    <img src="docs/screenshots/dashboard-light.jpg" alt="Folio dashboard with the Meadow background" width="760" />
+  </picture>
 </p>
 
 Folio does not keep a second copy of your bookmarks. It reads and writes the browser's **native bookmark tree**, so
@@ -31,7 +34,7 @@ Works in **Chrome, Edge, Brave, Arc, Dia and other Chromium browsers**, and in *
 - **Safe deletes.** Deleted bookmarks are kept for 30 days and restore with `Z`, including their tags and notes.
 - **Duplicate aware.** Saving a page you already saved shows where it lives, ignoring tracking parameters and `#fragments`.
 - **Favicons that just work.** Chromium uses the browser's own icon cache. Firefox and Zen fetch and cache icons locally. Missing icons get a stable letter tile.
-- **Two themes and your own background.** Overcast (light) and Dusk (dark), with generated halftone backgrounds or your own image.
+- **Two themes and your own background.** Overcast (light) and Dusk (dark), with generated backgrounds, including the painted Meadow and halftone Marble, or your own image.
 - **Popup, full page and side panel**, all from the same code.
 
 <p align="center">

@@ -122,6 +122,12 @@ describe('actions on bookmarks', () => {
     expect(actions.confirmDelete).toHaveBeenCalled();
   });
 
+  it('deletes with ⌘⌫ and ⌘Delete too', () => {
+    run(key('Backspace', { metaKey: true }));
+    run(key('Delete', { ctrlKey: true }));
+    expect(actions.deleteNow).toHaveBeenCalledTimes(2);
+  });
+
   it('deletes a folder only when nothing is selected', () => {
     run(key('Backspace'), { cursor: folderEntry, targets: [] }, false);
     expect(actions.deleteFolder).toHaveBeenCalledWith('p');

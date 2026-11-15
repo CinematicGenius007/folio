@@ -61,7 +61,7 @@ export function handleKey(e: KeyInput, state: KeyState, a: KeyActions, selection
     if (e.key === 'z') return handled(a.undo);
     if (e.key === 'c' && bookmark && !state.hasTextSelection) return handled(() => a.copyLink(bookmark));
     if (e.key === 'e' && cursor) return handled(() => a.edit(cursor));
-    if (e.key === 'Backspace' && targets.length) return handled(deleteTargets);
+    if ((e.key === 'Backspace' || e.key === 'Delete') && targets.length) return handled(deleteTargets);
     if (e.key === 'Enter' && cursor) return handled(() => openCursor(false));
     return false;
   }

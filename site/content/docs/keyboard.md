@@ -30,25 +30,25 @@ Change these in `chrome://extensions/shortcuts`, or in Firefox and Zen under `ab
 
 ## In the full page and side panel
 
-| Keys                | Action                                              |
-| ------------------- | --------------------------------------------------- |
-| `J` `K` or `↓` `↑`  | Move through the list                               |
-| `Enter`, `⌘Enter`   | Open                                                |
-| `Shift+Enter`       | Open in the background                              |
-| `L` or `→`          | Open the highlighted folder                         |
-| `H` or `←`          | Up one folder                                       |
-| `/`, `⌘F`, `⌘K`     | Search, or paste a link to save it                  |
-| `C`                 | Folder switcher: type to find a folder at any depth |
-| `O`                 | Folio menu: theme, shortcuts, backup                |
-| `E`, `⌘E`           | Edit, or rename a folder                            |
-| `M`                 | Move to a folder                                    |
-| `X`                 | Select or deselect, for acting on several at once   |
-| `⌘C`                | Copy the link                                       |
-| `Delete`, `⌘Delete` | Delete (undo with `Z`)                              |
-| `Z`                 | Undo the last delete                                |
-| `Shift+N`           | New folder here                                     |
-| `B`                 | Background settings                                 |
-| `Esc`               | Clear the search or close a menu                    |
-| `?`                 | Show every shortcut                                 |
+| Keys                                | Action                                              |
+| ----------------------------------- | --------------------------------------------------- |
+| `J` `K` or `↓` `↑`                  | Move through the list                               |
+| `Enter`, `⌘Enter`                   | Open                                                |
+| `Shift+Enter`                       | Open in the background                              |
+| `L` or `→`                          | Open the highlighted folder                         |
+| `H` or `←`                          | Up one folder                                       |
+| `/`, `⌘F`, `⌘K`                     | Search, or paste a link to save it                  |
+| `C`                                 | Folder switcher: type to find a folder at any depth |
+| `O`                                 | Folio menu: theme, shortcuts, backup                |
+| `E`, `⌘E`                           | Edit, or rename a folder                            |
+| `M`                                 | Move to a folder                                    |
+| `X`                                 | Select or deselect, for acting on several at once   |
+| `⌘C`                                | Copy the link                                       |
+| `Backspace`, `Delete`, `⌘Backspace` | Delete (undo with `Z`)                              |
+| `Z`                                 | Undo the last delete                                |
+| `Shift+N`                           | New folder here                                     |
+| `B`                                 | Background settings                                 |
+| `Esc`                               | Clear the search or close a menu                    |
+| `?`                                 | Show every shortcut                                 |
 
 On Windows and Linux, read `⌘` as `Ctrl`. A right-click on any row opens the same actions as a menu.

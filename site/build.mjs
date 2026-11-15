@@ -10,6 +10,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
 import { Marked } from 'marked';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
@@ -31,7 +32,15 @@ const VERSION = (() => {
     return undefined;
   }
 })();
-const TODAY = new Date().toISOString().slice(0, 10);
+/** Last commit date (YYYY-MM-DD) of a file, or undefined when git history is unavailable (e.g. a shallow export). */
+function lastModified(file) {
+  try {
+    const out = execFileSync('git', ['log', '-1', '--format=%cs', '--', file], { cwd: ROOT, encoding: 'utf8' }).trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 // ---------- helpers ----------
 
@@ -215,8 +224,13 @@ marked.use({
       const id = slugify(text);
       return `<h${depth} id="${id}"><a href="#${id}">${text}</a></h${depth}>\n`;
     },
+    // Docs are first-party, but raw HTML and odd URL schemes are still refused so a slip cannot ship markup.
+    html({ text }) {
+      return escapeHtml(text);
+    },
     link({ href, title, tokens }) {
       const text = this.parser.parseInline(tokens);
+      if (!/^(https:|mailto:|\/|#)/.test(href)) throw new Error(`Refusing link with unsafe or relative URL: ${href}`);
       const external = /^https?:/.test(href) && !href.startsWith(SITE);
       return `<a href="${escapeHtml(href)}"${title ? ` title="${escapeHtml(title)}"` : ''}${external ? ' rel="noopener"' : ''}>${text}</a>`;
     },
@@ -238,6 +252,7 @@ const docs = readdirSync(DOCS_DIR)
       description: data.description,
       order: Number(data.order ?? 99),
       markdown: body,
+      modified: lastModified(join(DOCS_DIR, file)),
       html: marked.parse(body),
     };
   })
@@ -291,7 +306,7 @@ ${footer()}
         description: doc.description,
         url: SITE + doc.path,
         inLanguage: 'en',
-        dateModified: TODAY,
+        ...(doc.modified && { dateModified: doc.modified }),
         isPartOf: { '@id': `${SITE}/#website` },
         about: { '@type': 'SoftwareApplication', name: NAME, url: SITE },
         author: PUBLISHER,
@@ -366,14 +381,14 @@ writeFileSync(
 );
 
 const urls = [
-  { loc: SITE, priority: '1.0' },
-  ...docs.map((d) => ({ loc: SITE + d.path, priority: d.slug ? '0.7' : '0.8' })),
+  { loc: SITE, priority: '1.0', lastmod: lastModified(join(ROOT, 'src', 'home.html')) },
+  ...docs.map((d) => ({ loc: SITE + d.path, priority: d.slug ? '0.7' : '0.8', lastmod: d.modified })),
 ];
 writeFileSync(
   join(DIST, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map((u) => `  <url><loc>${u.loc}</loc><lastmod>${TODAY}</lastmod><priority>${u.priority}</priority></url>`).join('\n')}
+${urls.map((u) => `  <url><loc>${u.loc}</loc>${u.lastmod ? `<lastmod>${u.lastmod}</lastmod>` : ''}<priority>${u.priority}</priority></url>`).join('\n')}
 </urlset>
 `,
 );

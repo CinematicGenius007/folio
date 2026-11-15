@@ -15,7 +15,7 @@ const KEYS: [string, string][] = [
   ['⌘E / E', 'Edit (rename a folder)'],
   ['M', 'Move to a folder'],
   ['X', 'Select / deselect'],
-  ['⌫ / ⌘⌫', 'Delete (undo with Z)'],
+  ['⌫ / Del / ⌘⌫', 'Delete (undo with Z)'],
   ['⇧N', 'New folder here'],
   ['B', 'Background settings'],
   ['Esc', 'Clear / close'],

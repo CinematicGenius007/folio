@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-15
+
+First privately signed release. It carries an update address, so Firefox and Zen builds from here on update themselves.
+
 ### Added
 
 - Private distribution with automatic updates on Firefox and Zen: the release workflow signs an unlisted build with Mozilla, attaches it to the GitHub release, and publishes `updates.json` on the website. See `docs/RELEASING.md`.

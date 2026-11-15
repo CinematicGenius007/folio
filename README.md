@@ -60,6 +60,7 @@ which also covers downloading a release and building from source.
 | Anywhere  | `Alt+Shift+B`           | Toggle the side panel or sidebar        |
 | Popup     | `1`-`9`, `↑` `↓`, `↵`   | Pick a folder and save                  |
 | Popup     | `/`                     | Search every folder, at any depth       |
+| Popup     | `0`                     | Open the dashboard (works on any page)  |
 | Dashboard | `J` `K` or `↓` `↑`      | Move through the list                   |
 | Dashboard | `↵`, `⇧↵`               | Open, open in the background            |
 | Dashboard | `L` `→`, `H` `←`        | Enter a folder, go up                   |

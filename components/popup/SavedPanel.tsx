@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { moveBookmarks, openDashboard, removeBookmarks } from '@/lib/actions';
+import { moveBookmarks, removeBookmarks } from '@/lib/actions';
 import { db } from '@/lib/core/db';
 import type { Tombstone } from '@/lib/core/types';
 import type { Library } from '@/lib/react';
 import { FolderList, usePicker } from '@/components/folders/FolderList';
 import { Button, Kbd } from '@/components/ui';
+import { openFolio } from './openFolio';
 
 /** The projector writes the tombstone shortly after the browser reports the delete. */
 const TOMBSTONE_DELAY_MS = 300;
@@ -32,11 +33,6 @@ export function SavedPanel({
     await removeBookmarks([bookmark.id]);
     setTimeout(async () => onRemoved((await db.tombstones.get(bookmark.id)) ?? null), TOMBSTONE_DELAY_MS);
   };
-  const openFolio = async () => {
-    await openDashboard();
-    window.close();
-  };
-
   useEffect(() => {
     if (moving) return;
     const onKeyDown = (e: KeyboardEvent) => {

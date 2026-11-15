@@ -7,6 +7,7 @@ import { hostOf, isSafeUrl, normalizeUrl } from '@/lib/util/url';
 import { Favicon } from '@/components/favicon/Favicon';
 import { SavedPanel } from './SavedPanel';
 import { SavePanel } from './SavePanel';
+import { UnsavablePanel } from './UnsavablePanel';
 import type { PageTab } from './types';
 
 /**
@@ -105,8 +106,7 @@ function PopupBody({
   removed: Tombstone | null;
   onRemoved: (stone: Tombstone | null) => void;
 }) {
-  if (!isSafeUrl(tab.url))
-    return <div className="px-4 pb-4 text-[13px] text-muted">Folio can save http and https pages.</div>;
+  if (!isSafeUrl(tab.url)) return <UnsavablePanel />;
   return saved.length ? (
     <SavedPanel saved={saved} lib={lib} onRemoved={onRemoved} />
   ) : (

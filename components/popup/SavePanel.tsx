@@ -6,6 +6,7 @@ import type { Library } from '@/lib/react';
 import { originOf } from '@/lib/util/url';
 import { FolderList, usePicker } from '@/components/folders/FolderList';
 import { Button, Kbd } from '@/components/ui';
+import { openFolio } from './openFolio';
 import type { PageTab } from './types';
 
 /**
@@ -86,6 +87,8 @@ export function SavePanel({
         inputRef.current?.focus();
       } else if (!inInput && (e.key === 'j' || e.key === 'k')) {
         picker.move(e.key === 'j' ? 1 : -1);
+      } else if (!inInput && e.key === '0') {
+        void openFolio();
       }
     };
     window.addEventListener('keydown', onKeyDown);
@@ -111,7 +114,7 @@ export function SavePanel({
         />
       </div>
       <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <span className="text-[12px] text-muted">
+        <span className="flex items-center gap-3 text-[12px] text-muted">
           {removed ? (
             <>
               Removed.{' '}
@@ -127,6 +130,12 @@ export function SavePanel({
               <Kbd>↑↓</Kbd> choose
             </>
           )}
+          <button
+            onClick={() => void openFolio()}
+            className="inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
+          >
+            Open Folio <Kbd>0</Kbd>
+          </button>
         </span>
         <Button
           variant="primary"

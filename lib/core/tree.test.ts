@@ -101,4 +101,24 @@ describe('pickerRows', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ id: '15', title: 'Waves', pathLabel: 'Courses / Physics' });
   });
+  it('pins suggestions above the inbox and tree, and ignores them while filtering', () => {
+    const suggestions = [{ id: '15', title: 'Waves', count: 1, color: 'slate' as const, reason: '1 from waves.dev' }];
+    const open = pickerRows({ tree: nodes, folders, inbox, expanded: new Set(), query: '', suggestions });
+    expect(open.map((r) => `${r.suggested ? 's' : 't'}:${r.title}`)).toEqual([
+      's:Waves',
+      't:Inbox',
+      't:Bookmarks bar',
+      't:Courses',
+    ]);
+    expect(open[0]).toMatchObject({ rowKey: 'suggest:15', pathLabel: '1 from waves.dev' });
+    const filtered = pickerRows({
+      tree: nodes,
+      folders,
+      inbox,
+      expanded: new Set(),
+      query: 'waves',
+      suggestions,
+    });
+    expect(filtered.every((r) => !r.suggested)).toBe(true);
+  });
 });

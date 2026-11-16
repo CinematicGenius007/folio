@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { addBookmark, parseTags, restoreTombstones } from '@/lib/actions';
 import type { Tombstone } from '@/lib/core/types';
+import { SUGGEST_CONFIDENCE, prunePickCounts, suggestFolders } from '@/lib/core/suggest';
+import { findNode, type PickerSuggestion } from '@/lib/core/tree';
 import { hasBrowserFavicons, storeIconFromUrl } from '@/lib/favicon';
 import type { Library } from '@/lib/react';
+import { useSetting } from '@/lib/react';
 import { originOf } from '@/lib/util/url';
 import { FolderList, usePicker } from '@/components/folders/FolderList';
 import { Button, Kbd } from '@/components/ui';
@@ -12,6 +15,7 @@ import type { PageTab } from './types';
 /**
  * Save a new page: pick a folder (1–9, ↑↓, or `/` to search every folder) and optionally type a
  * note with #tags. A text starting with `/` is a folder search instead of a note.
+ * Ranked suggestions (host affinity, name overlap, prior picks) sit above the tree when confident.
  */
 export function SavePanel({
   tab,
@@ -27,6 +31,7 @@ export function SavePanel({
   removed: Tombstone | null;
   onRemoved: (stone: Tombstone | null) => void;
 }) {
+  const [pickCounts] = useSetting<Record<string, number>>('folderPickCounts', {});
   const inbox = useMemo(
     () =>
       lib.inboxId
@@ -34,12 +39,54 @@ export function SavePanel({
         : null,
     [lib.inboxId, lib.bookmarks],
   );
+
+  const ranked = useMemo(() => {
+    const alive = prunePickCounts(
+      pickCounts,
+      lib.folders.map((f) => f.id),
+    );
+    return suggestFolders({
+      page: { title: tab.title, url: tab.url },
+      folders: lib.folders,
+      bookmarks: lib.bookmarks,
+      meta: lib.meta,
+      pickCounts: alive,
+      lastFolderId,
+      excludeIds: lib.inboxId ? [lib.inboxId] : [],
+    });
+  }, [tab.title, tab.url, lib.folders, lib.bookmarks, lib.meta, lib.inboxId, pickCounts, lastFolderId]);
+
+  const suggestions: PickerSuggestion[] = useMemo(
+    () =>
+      ranked.flatMap((s) => {
+        const node = findNode(lib.tree, s.id);
+        const folder = lib.folderById.get(s.id);
+        if (!folder) return [];
+        return [
+          {
+            id: s.id,
+            title: folder.title || 'Untitled',
+            count: node?.count ?? 0,
+            color: node?.color ?? 'slate',
+            reason: s.reasons[0],
+          },
+        ];
+      }),
+    [ranked, lib.tree, lib.folderById],
+  );
+
+  const top = ranked[0];
+  const preferSuggest = !!top && top.score >= SUGGEST_CONFIDENCE;
+  const activeId = preferSuggest ? top.id : (lastFolderId ?? lib.inboxId ?? undefined);
+  const expandFor = preferSuggest ? top.id : lastFolderId;
+
   const picker = usePicker({
     tree: lib.tree,
     folders: lib.folders,
     inbox,
-    initialExpanded: (lastFolderId ? (lib.folderById.get(lastFolderId)?.pathIds ?? []) : []).slice(0, -1),
-    initialActive: lastFolderId ?? lib.inboxId ?? undefined,
+    suggestions,
+    initialExpanded: (expandFor ? (lib.folderById.get(expandFor)?.pathIds ?? []) : []).slice(0, -1),
+    initialActive: activeId,
   });
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);

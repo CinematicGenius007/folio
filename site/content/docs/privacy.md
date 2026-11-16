@@ -16,7 +16,7 @@ Folio is local-first. There is no Folio server, no account, no analytics and no 
 - **Tags and notes you add:** IndexedDB, on this device only.
 - **Deleted bookmarks:** kept for 30 days so you can undo, then removed.
 - **Site icons** (Firefox and Zen): small cached images.
-- **Settings:** theme, background (including an image you pick), the last folder used.
+- **Settings:** theme, background (including an image you pick), the last folder used, and local folder pick counts used only to rank save suggestions on this device.
 
 Uninstalling Folio removes all of the above and leaves your bookmarks untouched.
 

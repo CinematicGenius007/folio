@@ -61,6 +61,7 @@ lib/
     projector.ts      Tree -> read model: flatten() and syncReadModel() with tombstones
     scheduler.ts      Debounced, non-overlapping sync runs
     tree.ts           Folder tree and the rows a folder picker shows
+    suggest.ts        Local folder ranking for the save popup (host, name, picks)
     search.ts         MiniSearch index over titles, URLs, tags, notes and paths
   actions/          Everything that changes data: bookmarks, tags and notes, backup
   favicon/          Letter-tile palette, Chromium icon cache, site fetcher, network guard

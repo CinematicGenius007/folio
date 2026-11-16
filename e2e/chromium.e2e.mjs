@@ -135,6 +135,14 @@ try {
   check('unsafe javascript: links are never opened', opened === 0);
 
   // ---- popup ----
+  // Same host under Dev Tech so the save popup can suggest that folder from local affinity.
+  await inWorker(async (origin) => {
+    const other = (await chrome.bookmarks.getTree())[0].children[1];
+    const dev = other.children.find((c) => c.title === 'Dev Tech' && !c.url);
+    await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture', url: `${origin}/related` });
+  }, server.origin);
+  await sleep(1200);
+
   const page = await context.newPage();
   await page.goto(`${server.origin}/`);
   const popup = await context.newPage();
@@ -142,6 +150,12 @@ try {
   await popup.setViewportSize({ width: 380, height: 520 });
   await popup.goto(`${base}/popup.html`);
   await popup.waitForSelector('[role=option]');
+  const suggested = await popup.locator('[role=option]').first().innerText();
+  check(
+    'popup suggests a folder that already holds this host',
+    /Dev Tech/.test(suggested) && /from/.test(suggested),
+    suggested,
+  );
   const heightSaving = await popup.evaluate(() => document.querySelector('#root > div').getBoundingClientRect().height);
   await popup.keyboard.type('/phys wav');
   await sleep(250);

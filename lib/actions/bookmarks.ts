@@ -1,5 +1,6 @@
 import { browser } from 'wxt/browser';
 import { db, getSetting, setSetting } from '@/lib/core/db';
+import { bumpPickCount, prunePickCounts } from '@/lib/core/suggest';
 import type { Tombstone } from '@/lib/core/types';
 import { isSafeUrl } from '@/lib/util/url';
 import { setMeta } from './metadata';
@@ -52,6 +53,12 @@ export async function addBookmark(input: {
   const node = await browser.bookmarks.create({ parentId: input.parentId, title: input.title, url: input.url });
   if (input.note || input.tags?.length) await setMeta(node.id, { note: input.note ?? '', tags: input.tags ?? [] });
   await setSetting('lastCollectionId', input.parentId);
+  // Local learning signal for folder suggestions: how often this destination is chosen.
+  // The read model may lag the native create, so always keep the folder we just saved into.
+  const picks = await getSetting<Record<string, number>>('folderPickCounts', {});
+  const folderIds = (await db.folders.toCollection().primaryKeys()).map(String);
+  const pruned = folderIds.length > 0 ? prunePickCounts(picks, new Set([...folderIds, input.parentId])) : picks;
+  await setSetting('folderPickCounts', bumpPickCount(pruned, input.parentId));
   return node.id;
 }
 

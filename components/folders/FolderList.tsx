@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type PickerRow, pickerRows, type FolderNode } from '@/lib/core/tree';
+import { type PickerRow, pickerRows, type FolderNode, type PickerSuggestion } from '@/lib/core/tree';
 import type { Folder } from '@/lib/core/types';
 import { Check, ChevronRight } from '@/components/ui/icons';
 
@@ -20,13 +20,15 @@ export function usePicker(opts: {
   initialExpanded?: string[];
   /** Folder id to highlight first. */
   initialActive?: string;
+  /** Ranked destinations pinned above the tree while the filter is empty. */
+  suggestions?: PickerSuggestion[];
 }) {
-  const { tree, folders, inbox } = opts;
+  const { tree, folders, inbox, suggestions } = opts;
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(() => new Set(opts.initialExpanded ?? []));
   const rows = useMemo(
-    () => pickerRows({ tree, folders, inbox, expanded, query }),
-    [tree, folders, inbox, expanded, query],
+    () => pickerRows({ tree, folders, inbox, expanded, query, suggestions }),
+    [tree, folders, inbox, expanded, query, suggestions],
   );
 
   // The highlight is remembered by folder id, so it survives filtering and expanding.
@@ -103,38 +105,45 @@ export function FolderList({
   return (
     <div ref={ref} role="listbox" className={`overflow-y-auto ${className}`}>
       {rows.map((row, i) => (
-        <div
-          key={row.id}
-          data-idx={i}
-          role="option"
-          aria-selected={row.id === current}
-          onMouseEnter={() => setActive(i)}
-          onClick={() => onPick(row.id)}
-          className={`flex cursor-pointer items-center gap-2 rounded-[10px] pr-2.5 text-[14px] text-ink ${itemClass} ${i === active ? 'bg-hover' : ''} ${row.id === current ? 'font-medium' : ''}`}
-          style={{ paddingLeft: 8 + row.depth * 16 }}
-        >
-          {row.hasChildren ? (
-            <button
-              tabIndex={-1}
-              aria-label={row.expanded ? 'Collapse' : 'Expand'}
-              onClick={(e) => (e.stopPropagation(), toggle(row.id))}
-              className="grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded border-0 bg-transparent p-0 text-muted hover:bg-surface"
-            >
-              <ChevronRight
-                className={`transition-transform ${row.expanded ? 'rotate-90' : ''}`}
-                width={12}
-                height={12}
-              />
-            </button>
-          ) : (
-            <span className="w-5 shrink-0" />
+        <div key={row.rowKey}>
+          {row.suggested && i === 0 && (
+            <div className="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-wider text-muted">
+              Suggested
+            </div>
           )}
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={dotStyle(row)} />
-          <span className="min-w-0 flex-1 truncate">
-            {row.title}
-            {row.pathLabel && <span className="ml-2 text-[12px] font-normal text-muted">{row.pathLabel}</span>}
-          </span>
-          {row.id === current ? <Check /> : <span className="text-[13px] text-muted">{row.count}</span>}
+          {!row.suggested && rows[i - 1]?.suggested && <div className="mx-2 mb-1 mt-1.5 border-t border-control" />}
+          <div
+            data-idx={i}
+            role="option"
+            aria-selected={row.id === current}
+            onMouseEnter={() => setActive(i)}
+            onClick={() => onPick(row.id)}
+            className={`flex cursor-pointer items-center gap-2 rounded-[10px] pr-2.5 text-[14px] text-ink ${itemClass} ${i === active ? 'bg-hover' : ''} ${row.id === current ? 'font-medium' : ''}`}
+            style={{ paddingLeft: 8 + row.depth * 16 }}
+          >
+            {row.hasChildren ? (
+              <button
+                tabIndex={-1}
+                aria-label={row.expanded ? 'Collapse' : 'Expand'}
+                onClick={(e) => (e.stopPropagation(), toggle(row.id))}
+                className="grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded border-0 bg-transparent p-0 text-muted hover:bg-surface"
+              >
+                <ChevronRight
+                  className={`transition-transform ${row.expanded ? 'rotate-90' : ''}`}
+                  width={12}
+                  height={12}
+                />
+              </button>
+            ) : (
+              <span className="w-5 shrink-0" />
+            )}
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={dotStyle(row)} />
+            <span className="min-w-0 flex-1 truncate">
+              {row.title}
+              {row.pathLabel && <span className="ml-2 text-[12px] font-normal text-muted">{row.pathLabel}</span>}
+            </span>
+            {row.id === current ? <Check /> : <span className="text-[13px] text-muted">{row.count}</span>}
+          </div>
         </div>
       ))}
       {!rows.length && <div className="px-3 py-4 text-[13px] text-muted">No folder matches</div>}

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import {
   activeRowIndex,
   pickerRowKey,
@@ -105,12 +105,22 @@ export function FolderList({
   const ref = useRef<HTMLDivElement>(null);
   const { rows, active, setActive, toggle, keyboardMoves } = picker;
   const scrolledFor = useRef(0);
+  // Row identity only — not `active`, so hover highlight does not scroll the list.
+  const rowsSig = rows.map((r) => r.rowKey).join('\0');
+  const scrollActiveIntoView = useEffectEvent(() => {
+    ref.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+  });
+
+  // Keep the selected destination visible on first paint and when suggestions/tree reshape the list.
+  useEffect(() => {
+    scrollActiveIntoView();
+  }, [rowsSig]);
 
   useEffect(() => {
     if (keyboardMoves === scrolledFor.current) return;
     scrolledFor.current = keyboardMoves;
-    ref.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: 'nearest' });
-  }, [keyboardMoves, active]);
+    scrollActiveIntoView();
+  }, [keyboardMoves]);
 
   return (
     <div ref={ref} role="listbox" className={`overflow-y-auto ${className}`}>

@@ -160,6 +160,14 @@ try {
   );
   const activeKey = await popup.locator('[role=option][data-active=true]').getAttribute('data-row-key');
   check('confident host affinity pre-selects the suggestion', /^suggest:/.test(activeKey ?? ''), activeKey);
+  const activeInView = await popup.locator('[role=option][data-active=true]').evaluate((el) => {
+    const list = el.closest('[role=listbox]');
+    if (!list) return false;
+    const e = el.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    return e.top >= l.top - 1 && e.bottom <= l.bottom + 1;
+  });
+  check('active save destination is visible when the popup opens', activeInView);
   await popup.keyboard.press('ArrowDown');
   await popup.keyboard.press('ArrowDown');
   await popup.keyboard.press('ArrowDown');

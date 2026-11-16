@@ -17,6 +17,26 @@ export const SUGGEST_CONFIDENCE = 4;
 
 const DEFAULT_LIMIT = 3;
 
+/**
+ * Row key to highlight when opening the save picker.
+ * Only a confident suggestion is pre-selected; otherwise the last-used folder if it still exists,
+ * else the Inbox — never a below-confidence suggestion via a stale last-folder fallback.
+ */
+export function resolveSaveActiveKey(opts: {
+  top?: Pick<FolderSuggestion, 'id' | 'score'> | null;
+  lastFolderId: string | null;
+  inboxId: string | null;
+  folderById: { has(id: string): boolean };
+}): { activeKey?: string; expandFor: string | null } {
+  const { top, lastFolderId, inboxId, folderById } = opts;
+  if (top && top.score >= SUGGEST_CONFIDENCE) {
+    return { activeKey: `suggest:${top.id}`, expandFor: top.id };
+  }
+  const last = lastFolderId && folderById.has(lastFolderId) ? lastFolderId : null;
+  const id = last ?? (inboxId && folderById.has(inboxId) ? inboxId : null);
+  return { activeKey: id ? `folder:${id}` : undefined, expandFor: last };
+}
+
 /** Split titles and hosts into lowercase tokens for overlap scoring (kept local, no MiniSearch dependency). */
 export function tokenize(text: string): string[] {
   return text

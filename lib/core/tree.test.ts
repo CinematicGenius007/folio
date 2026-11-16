@@ -153,4 +153,9 @@ describe('activeRowIndex', () => {
     expect(activeRowIndex(filtered, pickerRowKey('suggest', '11'))).toBe(0);
     expect(filtered[0]?.rowKey).toBe(pickerRowKey('folder', '11'));
   });
+
+  it('skips suggestions when the active key is a missing folder id', () => {
+    expect(rows[activeRowIndex(rows, pickerRowKey('folder', 'deleted'))]?.suggested).toBeFalsy();
+    expect(rows[activeRowIndex(rows, pickerRowKey('folder', 'deleted'))]?.rowKey).toBe(pickerRowKey('folder', '20'));
+  });
 });

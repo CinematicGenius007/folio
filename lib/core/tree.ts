@@ -109,18 +109,25 @@ export function folderIdFromRowKey(rowKey: string): string {
 /**
  * Index of the highlighted picker row. Prefers an exact `rowKey` match so a suggested folder and
  * the same folder in the tree stay distinct under keyboard navigation; falls back to folder id
- * when the key disappeared (e.g. suggestions hide while filtering).
+ * when the key disappeared (e.g. suggestions hide while filtering). A missing key prefers the
+ * first non-suggestion row so a stale last-folder never lands on a low-confidence suggestion.
  */
-export function activeRowIndex(rows: Pick<PickerRow, 'rowKey' | 'id'>[], activeKey: string | undefined): number {
+export function activeRowIndex(
+  rows: Pick<PickerRow, 'rowKey' | 'id' | 'suggested'>[],
+  activeKey: string | undefined,
+): number {
   if (!rows.length) return 0;
   const byKey = rows.findIndex((row) => row.rowKey === activeKey);
   if (byKey >= 0) return byKey;
   if (activeKey) {
     const id = folderIdFromRowKey(activeKey);
+    const byIdFolder = rows.findIndex((row) => row.id === id && !row.suggested);
+    if (byIdFolder >= 0) return byIdFolder;
     const byId = rows.findIndex((row) => row.id === id);
     if (byId >= 0) return byId;
   }
-  return 0;
+  const firstTree = rows.findIndex((row) => !row.suggested);
+  return firstTree >= 0 ? firstTree : 0;
 }
 
 /** Optional ranked destinations shown above the tree while the filter is empty. */

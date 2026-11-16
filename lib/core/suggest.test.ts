@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { Bm, Folder, Meta } from './types';
-import { SUGGEST_CONFIDENCE, bumpPickCount, prunePickCounts, suggestFolders, tokenize } from './suggest';
+import {
+  SUGGEST_CONFIDENCE,
+  SUGGEST_FLOOR,
+  bumpPickCount,
+  prunePickCounts,
+  resolveSaveActiveKey,
+  suggestFolders,
+  tokenize,
+} from './suggest';
 
 function folder(partial: Partial<Folder> & Pick<Folder, 'id' | 'title' | 'depth'>): Folder {
   return {
@@ -146,6 +154,40 @@ describe('suggestFolders', () => {
       limit: 2,
     });
     expect(hits).toHaveLength(2);
+  });
+});
+
+describe('resolveSaveActiveKey', () => {
+  const folderById = new Map(folders.map((f) => [f.id, f]));
+
+  it('pre-selects only a confident suggestion', () => {
+    expect(
+      resolveSaveActiveKey({
+        top: { id: 'dev', score: SUGGEST_CONFIDENCE },
+        lastFolderId: 'read',
+        inboxId: 'inbox',
+        folderById,
+      }),
+    ).toEqual({ activeKey: 'suggest:dev', expandFor: 'dev' });
+    expect(
+      resolveSaveActiveKey({
+        top: { id: 'dev', score: SUGGEST_CONFIDENCE - 0.1 },
+        lastFolderId: 'read',
+        inboxId: 'inbox',
+        folderById,
+      }),
+    ).toEqual({ activeKey: 'folder:read', expandFor: 'read' });
+  });
+
+  it('ignores a deleted last folder and falls back to Inbox, not a weak suggestion', () => {
+    expect(
+      resolveSaveActiveKey({
+        top: { id: 'dev', score: SUGGEST_FLOOR },
+        lastFolderId: 'deleted',
+        inboxId: 'inbox',
+        folderById,
+      }),
+    ).toEqual({ activeKey: 'folder:inbox', expandFor: null });
   });
 });
 

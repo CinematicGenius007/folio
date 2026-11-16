@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { addBookmark, parseTags, restoreTombstones } from '@/lib/actions';
 import type { Tombstone } from '@/lib/core/types';
-import { SUGGEST_CONFIDENCE, prunePickCounts, suggestFolders } from '@/lib/core/suggest';
-import { findNode, pickerRowKey, type PickerSuggestion } from '@/lib/core/tree';
+import { prunePickCounts, resolveSaveActiveKey, suggestFolders } from '@/lib/core/suggest';
+import { findNode, type PickerSuggestion } from '@/lib/core/tree';
 import { hasBrowserFavicons, storeIconFromUrl } from '@/lib/favicon';
 import type { Library } from '@/lib/react';
 import { originOf } from '@/lib/util/url';
@@ -77,15 +77,12 @@ export function SavePanel({
     [ranked, lib.tree, lib.folderById],
   );
 
-  const top = ranked[0];
-  const preferSuggest = !!top && top.score >= SUGGEST_CONFIDENCE;
-  const activeId = preferSuggest ? top.id : (lastFolderId ?? lib.inboxId ?? undefined);
-  const expandFor = preferSuggest ? top.id : lastFolderId;
-  const initialActiveKey = preferSuggest
-    ? pickerRowKey('suggest', top.id)
-    : activeId
-      ? pickerRowKey('folder', activeId)
-      : undefined;
+  const { activeKey: initialActiveKey, expandFor } = resolveSaveActiveKey({
+    top: ranked[0],
+    lastFolderId,
+    inboxId: lib.inboxId,
+    folderById: lib.folderById,
+  });
 
   const picker = usePicker({
     tree: lib.tree,

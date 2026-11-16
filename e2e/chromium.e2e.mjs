@@ -221,10 +221,13 @@ try {
     await sleep(100);
   }
   const scrollTopAfterHover = await popupScroll.locator('[role=listbox]').evaluate((el) => el.scrollTop);
+  const activeAfterHover = Number(
+    await popupScroll.locator('[role=option][data-active=true]').getAttribute('data-idx'),
+  );
   check(
-    'hovering another visible row does not scroll the folder list',
-    hoverIdx >= 0 && scrollTopBeforeHover === scrollTopAfterHover,
-    `hoverIdx=${hoverIdx} top=${scrollTopBeforeHover}->${scrollTopAfterHover}`,
+    'hovering another visible row changes highlight without scrolling',
+    hoverIdx >= 0 && activeAfterHover === hoverIdx && scrollTopBeforeHover === scrollTopAfterHover,
+    `hoverIdx=${hoverIdx} active=${activeAfterHover} top=${scrollTopBeforeHover}->${scrollTopAfterHover}`,
   );
   await popupScroll.close();
 

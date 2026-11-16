@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { flatten, type TreeNode } from './projector';
-import { buildTree, pickerRows } from './tree';
+import { activeRowIndex, buildTree, pickerRowKey, pickerRows } from './tree';
 
 const tree: TreeNode[] = [
   {
@@ -120,5 +120,37 @@ describe('pickerRows', () => {
       suggestions,
     });
     expect(filtered.every((r) => !r.suggested)).toBe(true);
+  });
+});
+
+describe('activeRowIndex', () => {
+  const nodes = buildTree(folders, bookmarks, '20');
+  const inbox = { id: '20', title: 'Inbox', count: 1 };
+  const suggestions = [{ id: '11', title: 'Courses', count: 3, color: 'slate' as const, reason: '1 from c.dev' }];
+  const rows = pickerRows({ tree: nodes, folders, inbox, expanded: new Set(['11']), query: '', suggestions });
+
+  it('keeps suggestion and tree rows with the same folder id distinct', () => {
+    expect(rows.filter((r) => r.id === '11')).toHaveLength(2);
+    expect(activeRowIndex(rows, pickerRowKey('suggest', '11'))).toBe(0);
+    expect(activeRowIndex(rows, pickerRowKey('folder', '11'))).toBe(
+      rows.findIndex((r) => r.rowKey === pickerRowKey('folder', '11')),
+    );
+  });
+
+  it('moves past a duplicated folder instead of snapping back to the suggestion', () => {
+    const suggestIdx = activeRowIndex(rows, pickerRowKey('suggest', '11'));
+    const afterDown = Math.min(rows.length - 1, suggestIdx + 1);
+    const keyAfterDown = rows[afterDown]!.rowKey;
+    expect(keyAfterDown).not.toBe(pickerRowKey('suggest', '11'));
+    // Another Down from the tree duplicate must advance further, not return to the suggestion.
+    const treeCourses = activeRowIndex(rows, pickerRowKey('folder', '11'));
+    expect(rows[Math.min(rows.length - 1, treeCourses + 1)]!.rowKey).not.toBe(pickerRowKey('suggest', '11'));
+    expect(activeRowIndex(rows, keyAfterDown)).toBe(afterDown);
+  });
+
+  it('falls back to the same folder id when the active key vanishes while filtering', () => {
+    const filtered = pickerRows({ tree: nodes, folders, inbox, expanded: new Set(), query: 'courses', suggestions });
+    expect(activeRowIndex(filtered, pickerRowKey('suggest', '11'))).toBe(0);
+    expect(filtered[0]?.rowKey).toBe(pickerRowKey('folder', '11'));
   });
 });

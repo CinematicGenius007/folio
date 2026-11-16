@@ -95,6 +95,34 @@ export interface PickerRow {
   suggested?: boolean;
 }
 
+/** Row key for a suggested or tree/filter row. Suggestions and tree rows can share a folder id. */
+export function pickerRowKey(kind: 'suggest' | 'folder', id: string): string {
+  return `${kind}:${id}`;
+}
+
+/** Folder id embedded in a picker row key (`suggest:11` / `folder:11`). */
+export function folderIdFromRowKey(rowKey: string): string {
+  const i = rowKey.indexOf(':');
+  return i >= 0 ? rowKey.slice(i + 1) : rowKey;
+}
+
+/**
+ * Index of the highlighted picker row. Prefers an exact `rowKey` match so a suggested folder and
+ * the same folder in the tree stay distinct under keyboard navigation; falls back to folder id
+ * when the key disappeared (e.g. suggestions hide while filtering).
+ */
+export function activeRowIndex(rows: Pick<PickerRow, 'rowKey' | 'id'>[], activeKey: string | undefined): number {
+  if (!rows.length) return 0;
+  const byKey = rows.findIndex((row) => row.rowKey === activeKey);
+  if (byKey >= 0) return byKey;
+  if (activeKey) {
+    const id = folderIdFromRowKey(activeKey);
+    const byId = rows.findIndex((row) => row.id === id);
+    if (byId >= 0) return byId;
+  }
+  return 0;
+}
+
 /** Optional ranked destinations shown above the tree while the filter is empty. */
 export interface PickerSuggestion {
   id: string;
@@ -122,7 +150,7 @@ export function pickerRows(opts: {
     for (const s of opts.suggestions ?? []) {
       rows.push({
         id: s.id,
-        rowKey: `suggest:${s.id}`,
+        rowKey: pickerRowKey('suggest', s.id),
         title: s.title,
         depth: 0,
         count: s.count,
@@ -136,7 +164,7 @@ export function pickerRows(opts: {
     if (inbox)
       rows.push({
         id: inbox.id,
-        rowKey: `folder:${inbox.id}`,
+        rowKey: pickerRowKey('folder', inbox.id),
         title: inbox.title,
         depth: 0,
         count: inbox.count,
@@ -149,7 +177,7 @@ export function pickerRows(opts: {
         const open = expanded.has(n.id);
         rows.push({
           id: n.id,
-          rowKey: `folder:${n.id}`,
+          rowKey: pickerRowKey('folder', n.id),
           title: n.title,
           depth,
           count: n.count,
@@ -175,7 +203,7 @@ export function pickerRows(opts: {
     const isInbox = inbox?.id === f.id;
     rows.push({
       id: f.id,
-      rowKey: `folder:${f.id}`,
+      rowKey: pickerRowKey('folder', f.id),
       title: f.title,
       depth: 0,
       count: isInbox ? inbox!.count : (n?.count ?? 0),

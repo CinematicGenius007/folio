@@ -54,11 +54,15 @@ export async function addBookmark(input: {
   if (input.note || input.tags?.length) await setMeta(node.id, { note: input.note ?? '', tags: input.tags ?? [] });
   await setSetting('lastCollectionId', input.parentId);
   // Local learning signal for folder suggestions: how often this destination is chosen.
+  // Atomic read-modify-write so two open surfaces saving at once cannot clobber counts.
   // The read model may lag the native create, so always keep the folder we just saved into.
-  const picks = await getSetting<Record<string, number>>('folderPickCounts', {});
-  const folderIds = (await db.folders.toCollection().primaryKeys()).map(String);
-  const pruned = folderIds.length > 0 ? prunePickCounts(picks, new Set([...folderIds, input.parentId])) : picks;
-  await setSetting('folderPickCounts', bumpPickCount(pruned, input.parentId));
+  await db.transaction('rw', db.settings, db.folders, async () => {
+    const row = await db.settings.get('folderPickCounts');
+    const picks = (row?.value as Record<string, number> | undefined) ?? {};
+    const folderIds = (await db.folders.toCollection().primaryKeys()).map(String);
+    const pruned = folderIds.length > 0 ? prunePickCounts(picks, new Set([...folderIds, input.parentId])) : picks;
+    await db.settings.put({ key: 'folderPickCounts', value: bumpPickCount(pruned, input.parentId) });
+  });
   return node.id;
 }
 

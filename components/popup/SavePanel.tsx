@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { addBookmark, parseTags, restoreTombstones } from '@/lib/actions';
 import type { Tombstone } from '@/lib/core/types';
 import { SUGGEST_CONFIDENCE, prunePickCounts, suggestFolders } from '@/lib/core/suggest';
-import { findNode, type PickerSuggestion } from '@/lib/core/tree';
+import { findNode, pickerRowKey, type PickerSuggestion } from '@/lib/core/tree';
 import { hasBrowserFavicons, storeIconFromUrl } from '@/lib/favicon';
 import type { Library } from '@/lib/react';
-import { useSetting } from '@/lib/react';
 import { originOf } from '@/lib/util/url';
 import { FolderList, usePicker } from '@/components/folders/FolderList';
 import { Button, Kbd } from '@/components/ui';
@@ -15,23 +14,26 @@ import type { PageTab } from './types';
 /**
  * Save a new page: pick a folder (1–9, ↑↓, or `/` to search every folder) and optionally type a
  * note with #tags. A text starting with `/` is a folder search instead of a note.
- * Ranked suggestions (host affinity, name overlap, prior picks) sit above the tree when confident.
+ * Ranked suggestions (host affinity, name overlap, prior picks) sit above the tree when any
+ * folder clears the score floor; the top one is pre-selected only when it clears the confidence bar.
  */
 export function SavePanel({
   tab,
   lib,
   lastFolderId,
+  pickCounts,
   removed,
   onRemoved,
 }: {
   tab: PageTab;
   lib: Library;
   lastFolderId: string | null;
+  /** Loaded before mount so the first paint can pre-select a confident suggestion. */
+  pickCounts: Record<string, number>;
   /** The bookmark just removed from this page, if any, so it can be restored. */
   removed: Tombstone | null;
   onRemoved: (stone: Tombstone | null) => void;
 }) {
-  const [pickCounts] = useSetting<Record<string, number>>('folderPickCounts', {});
   const inbox = useMemo(
     () =>
       lib.inboxId
@@ -79,6 +81,11 @@ export function SavePanel({
   const preferSuggest = !!top && top.score >= SUGGEST_CONFIDENCE;
   const activeId = preferSuggest ? top.id : (lastFolderId ?? lib.inboxId ?? undefined);
   const expandFor = preferSuggest ? top.id : lastFolderId;
+  const initialActiveKey = preferSuggest
+    ? pickerRowKey('suggest', top.id)
+    : activeId
+      ? pickerRowKey('folder', activeId)
+      : undefined;
 
   const picker = usePicker({
     tree: lib.tree,
@@ -86,7 +93,7 @@ export function SavePanel({
     inbox,
     suggestions,
     initialExpanded: (expandFor ? (lib.folderById.get(expandFor)?.pathIds ?? []) : []).slice(0, -1),
-    initialActive: activeId,
+    initialActiveKey,
   });
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);

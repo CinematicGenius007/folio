@@ -17,7 +17,7 @@ export const SUGGEST_CONFIDENCE = 4;
 
 const DEFAULT_LIMIT = 3;
 
-/** Same token split MiniSearch uses for bookmark search, kept local so suggestions stay dependency-light. */
+/** Split titles and hosts into lowercase tokens for overlap scoring (kept local, no MiniSearch dependency). */
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()

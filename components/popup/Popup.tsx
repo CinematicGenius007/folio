@@ -19,6 +19,7 @@ export function Popup() {
   const lib = useLibrary();
   const tab = useActiveTab();
   const lastFolderId = useLastFolder();
+  const pickCounts = usePickCounts();
   /** Lives here, not in a panel: removing the page swaps SavedPanel for SavePanel, and the undo must survive that. */
   const [removed, setRemoved] = useState<Tombstone | null>(null);
 
@@ -28,7 +29,8 @@ export function Popup() {
     const key = normalizeUrl(tab.url);
     return lib.bookmarks.filter((b) => b.normUrl === key);
   }, [tab, lib.bookmarks]);
-  const ready = !!tab && lib.ready && lastFolderId !== undefined;
+  // Wait for settings so SavePanel can pre-select a confident suggestion on first paint.
+  const ready = !!tab && lib.ready && lastFolderId !== undefined && pickCounts !== undefined;
 
   return (
     <div className="w-[380px] bg-ground text-ink">
@@ -42,6 +44,7 @@ export function Popup() {
               tab={tab}
               saved={saved}
               lastFolderId={lastFolderId ?? null}
+              pickCounts={pickCounts}
               lib={lib}
               removed={removed}
               onRemoved={setRemoved}
@@ -76,6 +79,15 @@ function useLastFolder(): string | null | undefined {
   return id;
 }
 
+/** Folder pick counts for suggestions; `undefined` until the setting has loaded. */
+function usePickCounts(): Record<string, number> | undefined {
+  const [counts, setCounts] = useState<Record<string, number>>();
+  useEffect(() => {
+    void getSetting<Record<string, number>>('folderPickCounts', {}).then(setCounts);
+  }, []);
+  return counts;
+}
+
 function Header({ tab, saved }: { tab: PageTab; saved: boolean }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3">
@@ -95,6 +107,7 @@ function PopupBody({
   tab,
   saved,
   lastFolderId,
+  pickCounts,
   lib,
   removed,
   onRemoved,
@@ -102,6 +115,7 @@ function PopupBody({
   tab: PageTab;
   saved: Library['bookmarks'];
   lastFolderId: string | null;
+  pickCounts: Record<string, number>;
   lib: Library;
   removed: Tombstone | null;
   onRemoved: (stone: Tombstone | null) => void;
@@ -110,6 +124,13 @@ function PopupBody({
   return saved.length ? (
     <SavedPanel saved={saved} lib={lib} onRemoved={onRemoved} />
   ) : (
-    <SavePanel tab={tab} lib={lib} lastFolderId={lastFolderId} removed={removed} onRemoved={onRemoved} />
+    <SavePanel
+      tab={tab}
+      lib={lib}
+      lastFolderId={lastFolderId}
+      pickCounts={pickCounts}
+      removed={removed}
+      onRemoved={onRemoved}
+    />
   );
 }

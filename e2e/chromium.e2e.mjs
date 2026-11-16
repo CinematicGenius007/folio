@@ -135,11 +135,13 @@ try {
   check('unsafe javascript: links are never opened', opened === 0);
 
   // ---- popup ----
-  // Same host under Dev Tech so the save popup can suggest that folder from local affinity.
+  // Same host under Dev Tech so the save popup can suggest (and pre-select) that folder.
   await inWorker(async (origin) => {
     const other = (await chrome.bookmarks.getTree())[0].children[1];
     const dev = other.children.find((c) => c.title === 'Dev Tech' && !c.url);
-    await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture', url: `${origin}/related` });
+    await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture a', url: `${origin}/related-a` });
+    await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture b', url: `${origin}/related-b` });
+    await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture c', url: `${origin}/related-c` });
   }, server.origin);
   await sleep(1200);
 
@@ -149,15 +151,26 @@ try {
   watch(popup);
   await popup.setViewportSize({ width: 380, height: 520 });
   await popup.goto(`${base}/popup.html`);
-  await popup.waitForSelector('[role=option]');
+  await popup.waitForSelector('[role=option][data-active=true]');
   const suggested = await popup.locator('[role=option]').first().innerText();
   check(
     'popup suggests a folder that already holds this host',
     /Dev Tech/.test(suggested) && /from/.test(suggested),
     suggested,
   );
+  const activeKey = await popup.locator('[role=option][data-active=true]').getAttribute('data-row-key');
+  check('confident host affinity pre-selects the suggestion', /^suggest:/.test(activeKey ?? ''), activeKey);
+  await popup.keyboard.press('ArrowDown');
+  await popup.keyboard.press('ArrowDown');
+  await popup.keyboard.press('ArrowDown');
+  const afterNav = await popup.locator('[role=option][data-active=true]').getAttribute('data-row-key');
+  check(
+    'keyboard moves past a suggested folder into the tree',
+    !!afterNav && afterNav !== activeKey && !afterNav.startsWith('suggest:'),
+    afterNav,
+  );
   const heightSaving = await popup.evaluate(() => document.querySelector('#root > div').getBoundingClientRect().height);
-  await popup.keyboard.type('/phys wav');
+  await popup.locator('input').fill('/phys wav');
   await sleep(250);
   const matches = await popup.locator('[role=option]').allInnerTexts();
   check(

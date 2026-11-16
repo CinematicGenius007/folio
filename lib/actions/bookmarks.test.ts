@@ -145,6 +145,16 @@ describe('addBookmark', () => {
     await addBookmark({ title: 'B', url: 'https://b.dev/', parentId: folder });
     expect(await getSetting<Record<string, number>>('folderPickCounts', {})).toEqual({ [folder]: 2 });
   });
+
+  it('keeps pick counts correct when two saves race', async () => {
+    const folder = await createFolder('Race');
+    await Promise.all([
+      addBookmark({ title: 'A', url: 'https://race-a.dev/', parentId: folder }),
+      addBookmark({ title: 'B', url: 'https://race-b.dev/', parentId: folder }),
+      addBookmark({ title: 'C', url: 'https://race-c.dev/', parentId: folder }),
+    ]);
+    expect(await getSetting<Record<string, number>>('folderPickCounts', {})).toEqual({ [folder]: 3 });
+  });
 });
 
 describe('unsafe URLs', () => {

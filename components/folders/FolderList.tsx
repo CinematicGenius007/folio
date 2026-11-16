@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { type PickerRow, pickerRows, type FolderNode, type PickerSuggestion } from '@/lib/core/tree';
+import {
+  activeRowIndex,
+  pickerRowKey,
+  type PickerRow,
+  pickerRows,
+  type FolderNode,
+  type PickerSuggestion,
+} from '@/lib/core/tree';
 import type { Folder } from '@/lib/core/types';
 import { Check, ChevronRight } from '@/components/ui/icons';
 
@@ -18,8 +25,10 @@ export function usePicker(opts: {
   folders: Folder[];
   inbox: InboxInfo | null;
   initialExpanded?: string[];
-  /** Folder id to highlight first. */
+  /** Folder id to highlight first when `initialActiveKey` is omitted. */
   initialActive?: string;
+  /** Exact row key to highlight (`suggest:id` or `folder:id`). Wins over `initialActive`. */
+  initialActiveKey?: string;
   /** Ranked destinations pinned above the tree while the filter is empty. */
   suggestions?: PickerSuggestion[];
 }) {
@@ -31,13 +40,14 @@ export function usePicker(opts: {
     [tree, folders, inbox, expanded, query, suggestions],
   );
 
-  // The highlight is remembered by folder id, so it survives filtering and expanding.
-  const [activeId, setActiveId] = useState(opts.initialActive);
-  const active = Math.max(
-    0,
-    rows.findIndex((row) => row.id === activeId),
+  // Highlight by rowKey so a suggested folder and the same folder in the tree stay distinct.
+  // activeRowIndex falls back to folder id when filtering hides the exact key (e.g. suggest: → folder:).
+  // Callers that need a confident first paint (SavePanel) load settings before mounting this hook.
+  const [activeKey, setActiveKey] = useState(
+    () => opts.initialActiveKey ?? (opts.initialActive ? pickerRowKey('folder', opts.initialActive) : undefined),
   );
-  const setActive = (index: number) => setActiveId(rows[index]?.id);
+  const active = activeRowIndex(rows, activeKey);
+  const setActive = (index: number) => setActiveKey(rows[index]?.rowKey);
   /** Bumps on keyboard moves so the list scrolls; mouse hover must not scroll. */
   const [keyboardMoves, setKeyboardMoves] = useState(0);
 
@@ -71,7 +81,7 @@ export function usePicker(opts: {
     return false;
   };
 
-  return { query, setQuery, rows, active, setActive, move, toggle, onKey, keyboardMoves };
+  return { query, setQuery, rows, active, setActive, move, toggle, onKey, keyboardMoves, activeKey };
 }
 
 const dotStyle = (row: PickerRow) =>
@@ -114,6 +124,8 @@ export function FolderList({
           {!row.suggested && rows[i - 1]?.suggested && <div className="mx-2 mb-1 mt-1.5 border-t border-control" />}
           <div
             data-idx={i}
+            data-row-key={row.rowKey}
+            data-active={i === active ? 'true' : undefined}
             role="option"
             aria-selected={row.id === current}
             onMouseEnter={() => setActive(i)}

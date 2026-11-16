@@ -81,6 +81,8 @@ export function ancestorsOf(folderById: Map<string, Folder>, id: string): Folder
 
 export interface PickerRow {
   id: string;
+  /** Stable React/list key; suggestions reuse a folder id that also appears in the tree. */
+  rowKey: string;
   title: string;
   depth: number; // indent level, 0 = top
   count: number;
@@ -89,6 +91,53 @@ export interface PickerRow {
   expanded: boolean;
   /** shown under filtered results so deep folders are recognizable */
   pathLabel?: string;
+  /** true when this row is a ranked suggestion pinned above the tree */
+  suggested?: boolean;
+}
+
+/** Row key for a suggested or tree/filter row. Suggestions and tree rows can share a folder id. */
+export function pickerRowKey(kind: 'suggest' | 'folder', id: string): string {
+  return `${kind}:${id}`;
+}
+
+/** Folder id embedded in a picker row key (`suggest:11` / `folder:11`). */
+export function folderIdFromRowKey(rowKey: string): string {
+  const i = rowKey.indexOf(':');
+  return i >= 0 ? rowKey.slice(i + 1) : rowKey;
+}
+
+/**
+ * Index of the highlighted picker row. Prefers an exact `rowKey` match so a suggested folder and
+ * the same folder in the tree stay distinct under keyboard navigation; falls back to folder id
+ * when the key disappeared (e.g. suggestions hide while filtering). A missing key prefers the
+ * first non-suggestion row so a stale last-folder never lands on a low-confidence suggestion.
+ */
+export function activeRowIndex(
+  rows: Pick<PickerRow, 'rowKey' | 'id' | 'suggested'>[],
+  activeKey: string | undefined,
+): number {
+  if (!rows.length) return 0;
+  const byKey = rows.findIndex((row) => row.rowKey === activeKey);
+  if (byKey >= 0) return byKey;
+  if (activeKey) {
+    const id = folderIdFromRowKey(activeKey);
+    const byIdFolder = rows.findIndex((row) => row.id === id && !row.suggested);
+    if (byIdFolder >= 0) return byIdFolder;
+    const byId = rows.findIndex((row) => row.id === id);
+    if (byId >= 0) return byId;
+  }
+  const firstTree = rows.findIndex((row) => !row.suggested);
+  return firstTree >= 0 ? firstTree : 0;
+}
+
+/** Optional ranked destinations shown above the tree while the filter is empty. */
+export interface PickerSuggestion {
+  id: string;
+  title: string;
+  count: number;
+  color: ColorName | 'inbox';
+  /** Quiet reason line, e.g. "3 from github.com". */
+  reason?: string;
 }
 
 /** Rows for a folder picker: tree view normally, flat path-labelled matches while filtering. */
@@ -98,14 +147,31 @@ export function pickerRows(opts: {
   inbox: { id: string; title: string; count: number } | null;
   expanded: Set<string>;
   query: string;
+  /** Ranked suggestions; ignored while a filter query is active. */
+  suggestions?: PickerSuggestion[];
 }): PickerRow[] {
   const { tree, folders, inbox, expanded } = opts;
   const q = opts.query.trim().toLowerCase();
   const rows: PickerRow[] = [];
   if (!q) {
+    for (const s of opts.suggestions ?? []) {
+      rows.push({
+        id: s.id,
+        rowKey: pickerRowKey('suggest', s.id),
+        title: s.title,
+        depth: 0,
+        count: s.count,
+        color: s.color,
+        hasChildren: false,
+        expanded: false,
+        pathLabel: s.reason,
+        suggested: true,
+      });
+    }
     if (inbox)
       rows.push({
         id: inbox.id,
+        rowKey: pickerRowKey('folder', inbox.id),
         title: inbox.title,
         depth: 0,
         count: inbox.count,
@@ -118,6 +184,7 @@ export function pickerRows(opts: {
         const open = expanded.has(n.id);
         rows.push({
           id: n.id,
+          rowKey: pickerRowKey('folder', n.id),
           title: n.title,
           depth,
           count: n.count,
@@ -143,6 +210,7 @@ export function pickerRows(opts: {
     const isInbox = inbox?.id === f.id;
     rows.push({
       id: f.id,
+      rowKey: pickerRowKey('folder', f.id),
       title: f.title,
       depth: 0,
       count: isInbox ? inbox!.count : (n?.count ?? 0),

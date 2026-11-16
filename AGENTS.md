@@ -43,7 +43,7 @@ Contact: folio@cinematicgenius007.com. Repo: `github.com/CinematicGenius007/foli
 ```sh
 pnpm install
 pnpm check            # format, lint, types, unit tests: run before every commit
-pnpm e2e:chromium     # builds the test build, drives real Chromium (24 checks); stable, run it for UI or popup changes
+pnpm e2e:chromium     # builds the test build, drives real Chromium (32 checks); stable, run it for UI or popup changes
 pnpm e2e:firefox      # same for Firefox/Zen (set ZEN_BIN or FIREFOX_BIN)
 pnpm build            # .output/chrome-mv3     | pnpm build:firefox -> .output/firefox-mv2
 pnpm zip              # also pnpm zip:firefox: release zips plus the sources zip

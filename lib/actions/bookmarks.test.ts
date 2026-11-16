@@ -131,11 +131,29 @@ describe('addBookmark', () => {
     expect(native.state.nodes.get(id)).toMatchObject({ title: 'Vite', url: 'https://vite.dev/', parentId: folder });
     expect(await db.meta.get(id)).toMatchObject({ tags: ['build'], note: 'fast' });
     expect(await getSetting('lastCollectionId', null)).toBe(folder);
+    expect(await getSetting<Record<string, number>>('folderPickCounts', {})).toEqual({ [folder]: 1 });
   });
 
   it('writes no metadata row when there are no tags or note', async () => {
     const id = await addBookmark({ title: 'A', url: 'https://a.dev/', parentId: await ensureInbox() });
     expect(await db.meta.get(id)).toBeUndefined();
+  });
+
+  it('increments folder pick counts on each save', async () => {
+    const folder = await createFolder('Picks');
+    await addBookmark({ title: 'A', url: 'https://a.dev/', parentId: folder });
+    await addBookmark({ title: 'B', url: 'https://b.dev/', parentId: folder });
+    expect(await getSetting<Record<string, number>>('folderPickCounts', {})).toEqual({ [folder]: 2 });
+  });
+
+  it('keeps pick counts correct when two saves race', async () => {
+    const folder = await createFolder('Race');
+    await Promise.all([
+      addBookmark({ title: 'A', url: 'https://race-a.dev/', parentId: folder }),
+      addBookmark({ title: 'B', url: 'https://race-b.dev/', parentId: folder }),
+      addBookmark({ title: 'C', url: 'https://race-c.dev/', parentId: folder }),
+    ]);
+    expect(await getSetting<Record<string, number>>('folderPickCounts', {})).toEqual({ [folder]: 3 });
   });
 });
 

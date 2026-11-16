@@ -9,7 +9,7 @@ Folio is local-first. There is no Folio server, no account, no analytics and no 
 - **Tags and notes you add:** IndexedDB, on this device only.
 - **Deleted bookmarks:** kept for 30 days in IndexedDB so you can undo, then purged.
 - **Cached favicons** (Firefox and Zen): small PNG or SVG files in IndexedDB.
-- **Settings:** theme, background (including an image you choose, stored locally), last folder used.
+- **Settings:** theme, background (including an image you choose, stored locally), last folder used, and local folder pick counts used only to rank save suggestions on this device.
 
 Uninstalling the extension removes all of the above. Your bookmarks are untouched. Export a JSON backup first to keep tags and notes.
 
@@ -32,14 +32,14 @@ Details of the Firefox/Zen fetcher:
 
 ## Permissions
 
-| Permission                       | Why it is needed                                                                                              |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `bookmarks`                      | Read and change the native bookmark tree. This is the whole point of the extension.                           |
-| `activeTab`                      | Read the title and URL of the page you save from the popup, only when you click the icon or use the shortcut. |
-| `unlimitedStorage`               | The local index, cached icons and an optional background image can exceed the default quota.                  |
-| `favicon` (Chromium)             | Read the browser's own favicon cache.                                                                         |
-| `sidePanel` (Chromium)           | The side panel.                                                                                               |
-| `<all_urls>` host (Firefox, Zen) | Fetch site icons, as described above. Not requested on Chromium.                                              |
+| Permission                       | Why it is needed                                                                                                                                                                                                                |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bookmarks`                      | Read and change the native bookmark tree. This is the whole point of the extension.                                                                                                                                             |
+| `activeTab`                      | Read the title and URL of the page you save from the popup, only when you click the icon or use the shortcut. Those two fields (plus your local bookmark index) also power folder suggestions; Folio never reads the page body. |
+| `unlimitedStorage`               | The local index, cached icons and an optional background image can exceed the default quota.                                                                                                                                    |
+| `favicon` (Chromium)             | Read the browser's own favicon cache.                                                                                                                                                                                           |
+| `sidePanel` (Chromium)           | The side panel.                                                                                                                                                                                                                 |
+| `<all_urls>` host (Firefox, Zen) | Fetch site icons, as described above. Not requested on Chromium.                                                                                                                                                                |
 
 Folio does **not** request `history`, `cookies`, `webRequest`, `scripting`, `downloads` or `storage`, and has no content scripts: it never reads or changes the pages you browse.
 

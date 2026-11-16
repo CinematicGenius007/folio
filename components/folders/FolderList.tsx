@@ -1,5 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { type PickerRow, pickerRows, type FolderNode } from '@/lib/core/tree';
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import {
+  activeRowIndex,
+  pickerRowKey,
+  type PickerRow,
+  pickerRows,
+  type FolderNode,
+  type PickerSuggestion,
+} from '@/lib/core/tree';
 import type { Folder } from '@/lib/core/types';
 import { Check, ChevronRight } from '@/components/ui/icons';
 
@@ -18,24 +25,29 @@ export function usePicker(opts: {
   folders: Folder[];
   inbox: InboxInfo | null;
   initialExpanded?: string[];
-  /** Folder id to highlight first. */
+  /** Folder id to highlight first when `initialActiveKey` is omitted. */
   initialActive?: string;
+  /** Exact row key to highlight (`suggest:id` or `folder:id`). Wins over `initialActive`. */
+  initialActiveKey?: string;
+  /** Ranked destinations pinned above the tree while the filter is empty. */
+  suggestions?: PickerSuggestion[];
 }) {
-  const { tree, folders, inbox } = opts;
+  const { tree, folders, inbox, suggestions } = opts;
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState(() => new Set(opts.initialExpanded ?? []));
   const rows = useMemo(
-    () => pickerRows({ tree, folders, inbox, expanded, query }),
-    [tree, folders, inbox, expanded, query],
+    () => pickerRows({ tree, folders, inbox, expanded, query, suggestions }),
+    [tree, folders, inbox, expanded, query, suggestions],
   );
 
-  // The highlight is remembered by folder id, so it survives filtering and expanding.
-  const [activeId, setActiveId] = useState(opts.initialActive);
-  const active = Math.max(
-    0,
-    rows.findIndex((row) => row.id === activeId),
+  // Highlight by rowKey so a suggested folder and the same folder in the tree stay distinct.
+  // activeRowIndex falls back to folder id when filtering hides the exact key (e.g. suggest: → folder:).
+  // Callers that need a confident first paint (SavePanel) load settings before mounting this hook.
+  const [activeKey, setActiveKey] = useState(
+    () => opts.initialActiveKey ?? (opts.initialActive ? pickerRowKey('folder', opts.initialActive) : undefined),
   );
-  const setActive = (index: number) => setActiveId(rows[index]?.id);
+  const active = activeRowIndex(rows, activeKey);
+  const setActive = (index: number) => setActiveKey(rows[index]?.rowKey);
   /** Bumps on keyboard moves so the list scrolls; mouse hover must not scroll. */
   const [keyboardMoves, setKeyboardMoves] = useState(0);
 
@@ -69,7 +81,7 @@ export function usePicker(opts: {
     return false;
   };
 
-  return { query, setQuery, rows, active, setActive, move, toggle, onKey, keyboardMoves };
+  return { query, setQuery, rows, active, setActive, move, toggle, onKey, keyboardMoves, activeKey };
 }
 
 const dotStyle = (row: PickerRow) =>
@@ -93,48 +105,67 @@ export function FolderList({
   const ref = useRef<HTMLDivElement>(null);
   const { rows, active, setActive, toggle, keyboardMoves } = picker;
   const scrolledFor = useRef(0);
+  // Row identity only — not `active`, so hover highlight does not scroll the list.
+  const rowsSig = rows.map((r) => r.rowKey).join('\0');
+  const scrollActiveIntoView = useEffectEvent(() => {
+    ref.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+  });
+
+  // Keep the selected destination visible on first paint and when suggestions/tree reshape the list.
+  useEffect(() => {
+    scrollActiveIntoView();
+  }, [rowsSig]);
 
   useEffect(() => {
     if (keyboardMoves === scrolledFor.current) return;
     scrolledFor.current = keyboardMoves;
-    ref.current?.querySelector(`[data-idx="${active}"]`)?.scrollIntoView({ block: 'nearest' });
-  }, [keyboardMoves, active]);
+    scrollActiveIntoView();
+  }, [keyboardMoves]);
 
   return (
     <div ref={ref} role="listbox" className={`overflow-y-auto ${className}`}>
       {rows.map((row, i) => (
-        <div
-          key={row.id}
-          data-idx={i}
-          role="option"
-          aria-selected={row.id === current}
-          onMouseEnter={() => setActive(i)}
-          onClick={() => onPick(row.id)}
-          className={`flex cursor-pointer items-center gap-2 rounded-[10px] pr-2.5 text-[14px] text-ink ${itemClass} ${i === active ? 'bg-hover' : ''} ${row.id === current ? 'font-medium' : ''}`}
-          style={{ paddingLeft: 8 + row.depth * 16 }}
-        >
-          {row.hasChildren ? (
-            <button
-              tabIndex={-1}
-              aria-label={row.expanded ? 'Collapse' : 'Expand'}
-              onClick={(e) => (e.stopPropagation(), toggle(row.id))}
-              className="grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded border-0 bg-transparent p-0 text-muted hover:bg-surface"
-            >
-              <ChevronRight
-                className={`transition-transform ${row.expanded ? 'rotate-90' : ''}`}
-                width={12}
-                height={12}
-              />
-            </button>
-          ) : (
-            <span className="w-5 shrink-0" />
+        <div key={row.rowKey}>
+          {row.suggested && i === 0 && (
+            <div className="px-2 pb-1 pt-0.5 text-[11px] font-medium uppercase tracking-wider text-muted">
+              Suggested
+            </div>
           )}
-          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={dotStyle(row)} />
-          <span className="min-w-0 flex-1 truncate">
-            {row.title}
-            {row.pathLabel && <span className="ml-2 text-[12px] font-normal text-muted">{row.pathLabel}</span>}
-          </span>
-          {row.id === current ? <Check /> : <span className="text-[13px] text-muted">{row.count}</span>}
+          {!row.suggested && rows[i - 1]?.suggested && <div className="mx-2 mb-1 mt-1.5 border-t border-control" />}
+          <div
+            data-idx={i}
+            data-row-key={row.rowKey}
+            data-active={i === active ? 'true' : undefined}
+            role="option"
+            aria-selected={row.id === current}
+            onMouseEnter={() => setActive(i)}
+            onClick={() => onPick(row.id)}
+            className={`flex cursor-pointer items-center gap-2 rounded-[10px] pr-2.5 text-[14px] text-ink ${itemClass} ${i === active ? 'bg-hover' : ''} ${row.id === current ? 'font-medium' : ''}`}
+            style={{ paddingLeft: 8 + row.depth * 16 }}
+          >
+            {row.hasChildren ? (
+              <button
+                tabIndex={-1}
+                aria-label={row.expanded ? 'Collapse' : 'Expand'}
+                onClick={(e) => (e.stopPropagation(), toggle(row.id))}
+                className="grid h-5 w-5 shrink-0 cursor-pointer place-items-center rounded border-0 bg-transparent p-0 text-muted hover:bg-surface"
+              >
+                <ChevronRight
+                  className={`transition-transform ${row.expanded ? 'rotate-90' : ''}`}
+                  width={12}
+                  height={12}
+                />
+              </button>
+            ) : (
+              <span className="w-5 shrink-0" />
+            )}
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={dotStyle(row)} />
+            <span className="min-w-0 flex-1 truncate">
+              {row.title}
+              {row.pathLabel && <span className="ml-2 text-[12px] font-normal text-muted">{row.pathLabel}</span>}
+            </span>
+            {row.id === current ? <Check /> : <span className="text-[13px] text-muted">{row.count}</span>}
+          </div>
         </div>
       ))}
       {!rows.length && <div className="px-3 py-4 text-[13px] text-muted">No folder matches</div>}

@@ -4,6 +4,10 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ## [Unreleased]
 
+### Added
+
+- Save popup suggests folders from local signals only: sites already filed under a host, folder-name overlap with the page title, and how often you pick each folder. Ranked rows sit above the tree with a short reason; the tree and `/` search stay as the escape hatch.
+
 ### Changed
 
 - CI and Vercel skip work a change does not need: browser builds and end-to-end tests run only for extension changes, the website build only for site changes.

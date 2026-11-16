@@ -37,12 +37,48 @@ export function resolveSaveActiveKey(opts: {
   return { activeKey: id ? `folder:${id}` : undefined, expandFor: last };
 }
 
-/** Split titles and hosts into lowercase tokens for overlap scoring (kept local, no MiniSearch dependency). */
+/** Common words and public-suffix crumbs that must not count as content overlap. */
+const STOP_TOKENS = new Set([
+  'the',
+  'a',
+  'an',
+  'and',
+  'or',
+  'of',
+  'to',
+  'in',
+  'on',
+  'for',
+  'with',
+  'from',
+  'by',
+  'at',
+  'as',
+  'is',
+  'it',
+  'www',
+  'com',
+  'org',
+  'net',
+  'edu',
+  'gov',
+  'io',
+  'co',
+  'uk',
+]);
+
+/**
+ * Neighbour (title/url overlap) score per folder is capped below confidence so weak shared
+ * tokens cannot alone pre-select a destination.
+ */
+export const SIMILAR_CAP = SUGGEST_CONFIDENCE - 0.5;
+
+/** Split titles and hosts into lowercase content tokens for overlap scoring. */
 export function tokenize(text: string): string[] {
   return text
     .toLowerCase()
     .split(/[\s/._:?&=#-]+/)
-    .filter((t) => t.length > 1);
+    .filter((t) => t.length > 1 && !STOP_TOKENS.has(t));
 }
 
 function overlap(a: Set<string>, b: Iterable<string>): number {
@@ -119,14 +155,22 @@ export function suggestFolders(opts: {
   }
 
   // Neighbours: other bookmarks whose titles/URLs share tokens with the page cast a weaker vote.
+  // Accumulate then cap per folder so stop-token leftovers cannot stack past confidence.
+  const similar = new Map<string, number>();
   for (const b of bookmarks) {
     if (hostOf(b.url) === host) continue; // already counted as host affinity
-    const tagTokens = (meta?.get(b.id)?.tags ?? []).map((t) => t.toLowerCase());
+    const tagTokens = (meta?.get(b.id)?.tags ?? [])
+      .map((t) => t.toLowerCase())
+      .filter((t) => t.length > 1 && !STOP_TOKENS.has(t));
     const tokens = new Set([...tokenize(b.title), ...tokenize(hostOf(b.url)), ...tagTokens]);
     const hits = overlap(pageTokens, tokens);
     if (hits < 2) continue;
     const tagBonus = tagTokens.some((t) => pageTokens.has(t)) ? 0.75 : 0;
-    bump(b.parentId, 1.5 + (hits - 2) * 0.5 + tagBonus, 'similar', 'similar bookmarks');
+    // Two content-token hits clear the suggestion floor once; further hits and tags add a little.
+    similar.set(b.parentId, (similar.get(b.parentId) ?? 0) + 2 + (hits - 2) * 0.5 + tagBonus);
+  }
+  for (const [folderId, amount] of similar) {
+    bump(folderId, Math.min(amount, SIMILAR_CAP), 'similar', 'similar bookmarks');
   }
 
   // Prior picks: frequent destinations rise even when content signals are thin.

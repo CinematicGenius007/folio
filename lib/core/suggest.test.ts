@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Bm, Folder, Meta } from './types';
 import {
+  SIMILAR_CAP,
   SUGGEST_CONFIDENCE,
   SUGGEST_FLOOR,
   bumpPickCount,
@@ -56,9 +57,10 @@ const bookmarks = [
 ];
 
 describe('tokenize', () => {
-  it('splits hosts and titles into lowercase tokens', () => {
+  it('splits hosts and titles into lowercase content tokens', () => {
     expect(tokenize('Vite — next gen')).toEqual(['vite', 'next', 'gen']);
-    expect(tokenize('github.com')).toEqual(['github', 'com']);
+    expect(tokenize('github.com')).toEqual(['github']);
+    expect(tokenize('The garden')).toEqual(['garden']);
   });
 });
 
@@ -132,6 +134,53 @@ describe('suggestFolders', () => {
       excludeIds: ['inbox'],
     });
     expect(hits.some((s) => s.id === 'read')).toBe(true);
+  });
+
+  it('does not let stop-token neighbour votes alone clear confidence', () => {
+    const noisy = [
+      bm({ id: 'n1', parentId: 'read', title: 'The Times', url: 'https://a.com/' }),
+      bm({ id: 'n2', parentId: 'read', title: 'The Verge', url: 'https://b.com/' }),
+      bm({ id: 'n3', parentId: 'read', title: 'The Atlantic', url: 'https://c.com/' }),
+    ];
+    const hits = suggestFolders({
+      page: { title: 'The garden', url: 'https://d.com/garden' },
+      folders,
+      bookmarks: noisy,
+      excludeIds: ['inbox'],
+    });
+    const read = hits.find((s) => s.id === 'read');
+    expect(read === undefined || read.score < SUGGEST_CONFIDENCE).toBe(true);
+    expect(
+      resolveSaveActiveKey({
+        top: read ?? { id: 'read', score: 0 },
+        lastFolderId: 'dev',
+        inboxId: 'inbox',
+        folderById: new Map(folders.map((f) => [f.id, f])),
+      }).activeKey,
+    ).toBe('folder:dev');
+  });
+
+  it('caps accumulated neighbour scores below confidence', () => {
+    const many = Array.from({ length: 8 }, (_, i) =>
+      bm({
+        id: `s${i}`,
+        parentId: 'read',
+        title: `Sketching code part ${i}`,
+        url: `https://sketch-${i}.example/`,
+      }),
+    );
+    const hits = suggestFolders({
+      page: { title: 'Sketching with code notes', url: 'https://other.example/workshop' },
+      folders,
+      bookmarks: many,
+      excludeIds: ['inbox'],
+    });
+    const read = hits.find((s) => s.id === 'read');
+    expect(read).toBeDefined();
+    expect(read!.reasons).toContain('similar bookmarks');
+    // Cap keeps neighbour votes from alone clearing the pre-select bar.
+    expect(read!.score).toBeLessThanOrEqual(SIMILAR_CAP);
+    expect(read!.score).toBeLessThan(SUGGEST_CONFIDENCE);
   });
 
   it('uses tags on similar bookmarks as a small bonus', () => {

@@ -135,18 +135,108 @@ try {
   check('unsafe javascript: links are never opened', opened === 0);
 
   // ---- popup ----
-  // Same host under Dev Tech so the save popup can suggest (and pre-select) that folder.
+  // Many top-level folders so a last-used destination sits below the 192px list without scrolling.
+  await inWorker(async () => {
+    const other = (await chrome.bookmarks.getTree())[0].children[1];
+    for (let i = 0; i < 14; i++) await chrome.bookmarks.create({ parentId: other.id, title: `Spacer ${i}` });
+    await chrome.bookmarks.create({ parentId: other.id, title: 'Scroll Target' });
+  });
+  await sleep(1200);
+
+  const page = await context.newPage();
+  await page.goto(`${server.origin}/`);
+  const popupSetup = await context.newPage();
+  watch(popupSetup);
+  await popupSetup.setViewportSize({ width: 380, height: 520 });
+  await popupSetup.goto(`${base}/popup.html`);
+  await popupSetup.waitForSelector('[role=option]');
+  await popupSetup.locator('input').fill('/Scroll Target');
+  await sleep(250);
+  await popupSetup.keyboard.press('Enter');
+  await sleep(1500);
+  await popupSetup.keyboard.press('Backspace');
+  await sleep(1000);
+  await popupSetup.close();
+
+  // Re-open so lastCollectionId (Scroll Target) is loaded; it should be below the fold.
+  const popupScroll = await context.newPage();
+  watch(popupScroll);
+  await popupScroll.setViewportSize({ width: 380, height: 520 });
+  await popupScroll.goto(`${base}/popup.html`);
+  await popupScroll.waitForSelector('[role=option][data-active=true]');
+  const scrollActive = popupScroll.locator('[role=option][data-active=true]');
+  const scrollKey = await scrollActive.getAttribute('data-row-key');
+  const scrollIdx = Number(await scrollActive.getAttribute('data-idx'));
+  check(
+    'last-used folder below the fold is the initial selection',
+    /^folder:/.test(scrollKey ?? '') && (await scrollActive.innerText()).includes('Scroll Target') && scrollIdx > 6,
+    `key=${scrollKey} idx=${scrollIdx}`,
+  );
+  const scrollInView = await scrollActive.evaluate((el) => {
+    const list = el.closest('[role=listbox]');
+    if (!list) return false;
+    const e = el.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    return e.top >= l.top - 1 && e.bottom <= l.bottom + 1;
+  });
+  check('initial selection below the fold is scrolled into view', scrollInView);
+
+  // Host fixtures reshape the list with suggestions while the last-used folder stays selected.
   await inWorker(async (origin) => {
     const other = (await chrome.bookmarks.getTree())[0].children[1];
     const dev = other.children.find((c) => c.title === 'Dev Tech' && !c.url);
     await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture a', url: `${origin}/related-a` });
+  }, server.origin);
+  await sleep(1200);
+  await popupScroll.waitForSelector('text=Suggested');
+  const afterReshape = popupScroll.locator('[role=option][data-active=true]');
+  check(
+    'active last-used folder stays selected after suggestions appear',
+    (await afterReshape.innerText()).includes('Scroll Target'),
+  );
+  const reshapeInView = await afterReshape.evaluate((el) => {
+    const list = el.closest('[role=listbox]');
+    if (!list) return false;
+    const e = el.getBoundingClientRect();
+    const l = list.getBoundingClientRect();
+    return e.top >= l.top - 1 && e.bottom <= l.bottom + 1;
+  });
+  check('active folder stays in view after the list reshapes', reshapeInView);
+
+  // Hover a different already-visible row (force skips Playwright's scroll-into-view).
+  const hoverIdx = await popupScroll.locator('[role=listbox]').evaluate((list) => {
+    const activeIdx = Number(list.querySelector('[role=option][data-active=true]')?.getAttribute('data-idx'));
+    const lr = list.getBoundingClientRect();
+    for (const opt of list.querySelectorAll('[role=option]')) {
+      const idx = Number(opt.getAttribute('data-idx'));
+      if (idx === activeIdx) continue;
+      const r = opt.getBoundingClientRect();
+      if (r.top >= lr.top - 1 && r.bottom <= lr.bottom + 1) return idx;
+    }
+    return -1;
+  });
+  const scrollTopBeforeHover = await popupScroll.locator('[role=listbox]').evaluate((el) => el.scrollTop);
+  if (hoverIdx >= 0) {
+    await popupScroll.locator(`[role=option][data-idx="${hoverIdx}"]`).hover({ force: true });
+    await sleep(100);
+  }
+  const scrollTopAfterHover = await popupScroll.locator('[role=listbox]').evaluate((el) => el.scrollTop);
+  check(
+    'hovering another visible row does not scroll the folder list',
+    hoverIdx >= 0 && scrollTopBeforeHover === scrollTopAfterHover,
+    `hoverIdx=${hoverIdx} top=${scrollTopBeforeHover}->${scrollTopAfterHover}`,
+  );
+  await popupScroll.close();
+
+  // Fresh popup: three same-host bookmarks make Dev Tech a confident pre-selection.
+  await inWorker(async (origin) => {
+    const other = (await chrome.bookmarks.getTree())[0].children[1];
+    const dev = other.children.find((c) => c.title === 'Dev Tech' && !c.url);
     await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture b', url: `${origin}/related-b` });
     await chrome.bookmarks.create({ parentId: dev.id, title: 'Local fixture c', url: `${origin}/related-c` });
   }, server.origin);
   await sleep(1200);
 
-  const page = await context.newPage();
-  await page.goto(`${server.origin}/`);
   const popup = await context.newPage();
   watch(popup);
   await popup.setViewportSize({ width: 380, height: 520 });
@@ -160,14 +250,6 @@ try {
   );
   const activeKey = await popup.locator('[role=option][data-active=true]').getAttribute('data-row-key');
   check('confident host affinity pre-selects the suggestion', /^suggest:/.test(activeKey ?? ''), activeKey);
-  const activeInView = await popup.locator('[role=option][data-active=true]').evaluate((el) => {
-    const list = el.closest('[role=listbox]');
-    if (!list) return false;
-    const e = el.getBoundingClientRect();
-    const l = list.getBoundingClientRect();
-    return e.top >= l.top - 1 && e.bottom <= l.bottom + 1;
-  });
-  check('active save destination is visible when the popup opens', activeInView);
   await popup.keyboard.press('ArrowDown');
   await popup.keyboard.press('ArrowDown');
   await popup.keyboard.press('ArrowDown');

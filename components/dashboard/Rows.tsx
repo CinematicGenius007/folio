@@ -124,6 +124,8 @@ export function Row(props: {
   selected: boolean;
   where: string;
   tags: string[];
+  /** Starts a new group (Duplicates view), so it sits a little apart from the row above. */
+  groupStart?: boolean;
   /** Folder suggestions for Inbox triage; only the highlighted Inbox row gets them. */
   triage?: TriageSuggestion[];
   onFocus: () => void;
@@ -154,7 +156,7 @@ export function Row(props: {
       onClick={(e) => (e.metaKey || e.ctrlKey ? props.onToggle() : props.onOpen(false))}
       onAuxClick={(e) => e.button === 1 && props.onOpen(true)}
       onContextMenu={(e) => (e.preventDefault(), props.onMenu(e.clientX, e.clientY))}
-      className={`group flex shrink-0 cursor-pointer flex-wrap items-center justify-between gap-1.5 rounded-[14px] border border-transparent ${compact ? 'px-2.5 py-2' : 'px-4 py-3'} ${selected ? 'bg-select' : focused ? 'bg-hover' : ''}`}
+      className={`group flex shrink-0 cursor-pointer flex-wrap items-center justify-between gap-1.5 rounded-[14px] border border-transparent ${compact ? 'px-2.5 py-2' : 'px-4 py-3'} ${props.groupStart ? 'mt-3' : ''} ${selected ? 'bg-select' : focused ? 'bg-hover' : ''}`}
     >
       <div className={`flex min-w-0 flex-1 items-center gap-2 ${compact ? '' : 'mr-4'}`}>
         {icon}

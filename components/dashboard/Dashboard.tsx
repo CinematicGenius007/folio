@@ -411,7 +411,7 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
           <div role="listbox" aria-label="Bookmarks" className={`flex flex-col gap-0.5 ${compact ? '' : '-mx-3'}`}>
             {!lib.ready && <p className="p-6 text-muted">Loading…</p>}
             {lib.ready && !entries.length && <Empty title={empty.title} hint={empty.hint} />}
-            {entries.map((entry) => {
+            {entries.map((entry, i) => {
               // Triage is about the row in hand, so the Inbox shows its cursor from the start.
               const focused = (cursorVisible || triageOn) && entry.id === cursor?.id;
               const hover = () => (setCursorVisible(true), setCursorId(entry.id));
@@ -428,6 +428,7 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
                 );
               }
               const { bookmark } = entry;
+              const previous = entries[i - 1];
               return (
                 <Row
                   key={entry.id}
@@ -436,7 +437,15 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
                   focused={focused}
                   selected={selection.selected.has(entry.id)}
                   tags={lib.meta.get(entry.id)?.tags ?? []}
-                  where={showPath ? bookmark.path.join(' / ') : ''}
+                  where={
+                    showPath
+                      ? // A bookmark directly in a browser root has no path; name the root instead.
+                        bookmark.path.join(' / ') || (lib.folderById.get(bookmark.parentId)?.title ?? '')
+                      : ''
+                  }
+                  groupStart={
+                    isDuplicates && previous?.kind === 'bookmark' && previous.bookmark.normUrl !== bookmark.normUrl
+                  }
                   triage={triageOn && focused ? triage : undefined}
                   onFocus={hover}
                   onTag={(tag) => setQuery(`#${tag}`)}

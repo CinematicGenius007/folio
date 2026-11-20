@@ -149,19 +149,33 @@ try {
       return bookmark ? (await chrome.bookmarks.get(bookmark.parentId))[0].title : null;
     }, title);
   const triageLine = () => dash.locator('[data-triage]');
+  /** Puts the cursor on a row by hovering it. The pointer leaves first, because a row that appears under a still pointer gets no mouseenter. */
+  const pointAt = async (row) => {
+    await dash.mouse.move(1, 1);
+    await row.hover();
+    await sleep(100);
+  };
 
   await dash.keyboard.press('c');
   await dash.keyboard.type('inbox');
   await dash.keyboard.press('Enter');
   await sleep(300);
   check(
-    'the Inbox highlights its first row with a move hint when nothing is suggested',
-    (await triageLine().count()) === 1 && /move/.test(await triageLine().innerText()),
+    'the Inbox highlights a row from the start',
+    (await triageLine().count()) === 1,
     await triageLine()
       .allInnerTexts()
       .then((t) => t.join('|')),
   );
-  await dash.keyboard.press('j');
+  // Both rows were created in the same instant, so their order varies: pick them by name.
+  await pointAt(dash.locator('[role=option]', { hasText: 'Unfiled zebra' }));
+  await sleep(150);
+  check(
+    'a row with nothing to suggest shows only a move hint',
+    /move/.test(await triageLine().innerText()) && !/File to/.test(await triageLine().innerText()),
+    await triageLine().innerText(),
+  );
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
   await sleep(150);
   check(
     'the highlighted Inbox row suggests the folder that holds its site',
@@ -180,7 +194,7 @@ try {
   await dash.keyboard.press('z');
   await sleep(900);
   check('Z moves a filed bookmark back to the Inbox', (await parentOf('Calculus notes')) === 'Inbox');
-  await dash.locator('[role=option]', { hasText: 'Calculus notes' }).hover();
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
   await dash.locator('[data-triage] button', { hasText: 'Courses' }).click();
   await sleep(900);
   check('a suggestion can be clicked to file the row', (await parentOf('Calculus notes')) === 'Courses');
@@ -193,9 +207,9 @@ try {
   await dash.keyboard.type('courses');
   await dash.keyboard.press('Enter');
   await sleep(300);
-  await dash.locator('[role=option]', { hasText: 'Calculus notes' }).hover();
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
   await dash.keyboard.press('x');
-  await dash.locator('[role=option]', { hasText: 'Calculus' }).filter({ hasNotText: 'notes' }).hover();
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus' }).filter({ hasNotText: 'notes' }));
   await dash.keyboard.press('x');
   await dash.keyboard.press('m');
   await dash.keyboard.type('dev tech');
@@ -222,7 +236,7 @@ try {
     dupRows.length === 2 && dupRows.every((r) => /Courses/.test(r)),
     dupRows.join(' | '),
   );
-  await dash.locator('[role=option]', { hasText: 'Calculus notes' }).hover();
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
   await dash.keyboard.press('Backspace');
   await sleep(900);
   check('⌫ deletes the copy under the cursor', (await dash.locator('text=No duplicates').count()) === 1);
@@ -238,7 +252,7 @@ try {
   await sleep(250);
   check('an unknown tag says so', (await dash.locator('text=No bookmarks tagged #physics').count()) === 1);
   await dash.keyboard.press('Escape');
-  await dash.locator('[role=option]', { hasText: 'Optics primer' }).hover();
+  await pointAt(dash.locator('[role=option]', { hasText: 'Optics primer' }));
   await dash.keyboard.press('e');
   await dash.locator('[role=dialog] input[aria-label="Tags"]').fill('#physics');
   await dash.keyboard.press('Enter');

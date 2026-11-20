@@ -33,7 +33,8 @@ const native = vi.hoisted(() => {
     get: async (id: string) => {
       const n = state.nodes.get(id);
       if (!n) throw new Error('not found');
-      return [n];
+      const siblings = n.parentId ? state.nodes.get(n.parentId)!.children! : [];
+      return [{ ...n, index: siblings.indexOf(n) }];
     },
     getTree: async () => [tree('0')],
     create: async (o: { parentId: string; title: string; url?: string; index?: number }) => {
@@ -49,12 +50,13 @@ const native = vi.hoisted(() => {
       return node;
     },
     update: async (id: string, patch: Partial<Node>) => Object.assign(state.nodes.get(id)!, patch),
-    move: async (id: string, { parentId }: { parentId: string }) => {
+    move: async (id: string, { parentId, index }: { parentId: string; index?: number }) => {
       const node = state.nodes.get(id)!;
       const old = state.nodes.get(node.parentId!)!;
       old.children = old.children!.filter((c) => c.id !== id);
       node.parentId = parentId;
-      state.nodes.get(parentId)!.children!.push(node);
+      const children = state.nodes.get(parentId)!.children!;
+      children.splice(index ?? children.length, 0, node);
     },
     remove: async (id: string) => {
       const node = state.nodes.get(id)!;
@@ -81,8 +83,11 @@ import {
   addBookmark,
   createFolder,
   ensureInbox,
+  fileBookmark,
+  moveBookmarks,
   openBookmark,
   openDashboard,
+  restoreMoves,
   restoreTombstones,
   updateBookmark,
 } from './bookmarks';
@@ -229,6 +234,64 @@ describe('restoreTombstones', () => {
     await restoreTombstones([stone('missing', false)]);
     const restored = [...native.state.nodes.values()].find((n) => n.title === 'Back')!;
     expect(restored.parentId).toBe(await ensureInbox());
+  });
+});
+
+describe('moveBookmarks and restoreMoves', () => {
+  const titles = (folderId: string) => native.state.nodes.get(folderId)!.children!.map((c) => c.title);
+  const seed = async () => {
+    const from = await createFolder('From');
+    const to = await createFolder('To');
+    const ids: string[] = [];
+    for (const t of ['a', 'b', 'c', 'd'])
+      ids.push(await addBookmark({ title: t, url: `https://${t}.dev/`, parentId: from }));
+    return { from, to, ids };
+  };
+
+  it('records where each bookmark was and moves it to the end of the target', async () => {
+    const { from, to, ids } = await seed();
+    const records = await moveBookmarks([ids[1]!], to);
+    expect(records).toEqual([{ id: ids[1], parentId: from, index: 1 }]);
+    expect(titles(to)).toEqual(['b']);
+  });
+
+  it('puts one bookmark back at its old position', async () => {
+    const { from, to, ids } = await seed();
+    await restoreMoves(await moveBookmarks([ids[2]!], to));
+    expect(titles(from)).toEqual(['a', 'b', 'c', 'd']);
+    expect(titles(to)).toEqual([]);
+  });
+
+  it('restores a bulk move in the original order', async () => {
+    const { from, to, ids } = await seed();
+    await restoreMoves(await moveBookmarks([ids[3]!, ids[0]!, ids[2]!], to));
+    expect(titles(from)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('skips bookmarks deleted since, and uses the Inbox when the old folder is gone', async () => {
+    const { from, to, ids } = await seed();
+    const records = await moveBookmarks([ids[0]!, ids[1]!], to);
+    await native.browser.bookmarks.remove(ids[0]!);
+    await native.browser.bookmarks.removeTree(from);
+    await restoreMoves(records);
+    expect(native.state.nodes.get(ids[1]!)!.parentId).toBe(await ensureInbox());
+  });
+
+  it('records nothing for a bookmark that no longer exists', async () => {
+    const { to } = await seed();
+    expect(await moveBookmarks(['missing'], to)).toEqual([]);
+  });
+});
+
+describe('fileBookmark', () => {
+  it('moves out of the Inbox and counts the destination as a pick', async () => {
+    const inbox = await ensureInbox();
+    const id = await addBookmark({ title: 'A', url: 'https://a.dev/', parentId: inbox });
+    const folder = await createFolder('Reading');
+    const records = await fileBookmark(id, folder);
+    expect(native.state.nodes.get(id)!.parentId).toBe(folder);
+    expect(records).toEqual([{ id, parentId: inbox, index: 0 }]);
+    expect(await getSetting<Record<string, number>>('folderPickCounts', {})).toMatchObject({ [folder]: 1 });
   });
 });
 

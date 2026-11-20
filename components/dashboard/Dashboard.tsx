@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { addBookmark, createFolder, ensureInbox, openBookmark, renameFolder } from '@/lib/actions';
-import { search } from '@/lib/core/search';
+import { parseQuery, search, taggedIds } from '@/lib/core/search';
+import { suggestFolders } from '@/lib/core/suggest';
 import { ancestorsOf, findNode } from '@/lib/core/tree';
 import { hasBrowserFavicons } from '@/lib/favicon';
 import { useBackground, useLibrary, useSetting, useTheme } from '@/lib/react';
@@ -17,11 +18,11 @@ import {
 } from '@/components/dialogs';
 import { RowMenu } from '@/components/menus';
 import { Toast } from '@/components/ui';
-import { type FolderFilter, bookmarkIdsIn, buildEntries } from './entries';
+import { DUPLICATES, type FolderFilter, bookmarkIdsIn, buildEntries, duplicateGroups, emptyMessage } from './entries';
 import { KeyHints } from './KeyHints';
 import { handleKey, isSearchShortcut } from './keymap';
 import { FolderSelect, Omnibar } from './Omnibar';
-import { Empty, FolderRow, Row } from './Rows';
+import { Empty, FolderRow, Row, type TriageSuggestion } from './Rows';
 import { type TopMenu, TopBar } from './TopBar';
 import { useBookmarkActions } from './useBookmarkActions';
 import { useSelection } from './useSelection';
@@ -44,12 +45,19 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
   const [themePref, setThemePref] = useTheme();
   const background = useBackground();
   const [lastBackup] = useSetting<number>('lastBackupAt', 0);
+  const [pickCounts] = useSetting<Record<string, number>>('folderPickCounts', {});
   const [now] = useState(() => Date.now());
 
   // ----- view state -----
   const [requestedFilter, setFilter] = useState<FolderFilter>('all');
-  const [query, setQuery] = useState('');
-  const [cursorId, setCursorId] = useState<string | null>(null);
+  const [query, setQueryState] = useState('');
+  /**
+   * The keyboard cursor: a row id, and the position it was last seen at. When the row leaves the
+   * list (deleted, filed, moved away) the cursor stays at that position, on the row taking its place.
+   */
+  const [cursorAt, setCursorAt] = useState<{ id: string | null; index: number }>({ id: null, index: 0 });
+  /** Bookmark the Edit dialog is for; set before the row exists when a pasted link is saved. */
+  const [editId, setEditId] = useState<string | null>(null);
   /** The highlight shows after the first hover or key press, like a plain list. */
   const [cursorVisible, setCursorVisible] = useState(false);
   const selection = useSelection();
@@ -63,12 +71,16 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
   const searchRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  /** Title input of the Edit dialog to select once it opens (after saving a pasted link). */
+  const selectTitleFor = useRef<string | null>(null);
 
   // A folder deleted elsewhere falls back to "all" without touching state.
+  const isFolderView = requestedFilter !== 'all' && requestedFilter !== DUPLICATES;
   const filter: FolderFilter =
-    lib.ready && requestedFilter !== 'all' && !lib.folderById.has(requestedFilter) ? 'all' : requestedFilter;
-  const currentFolder = filter === 'all' ? undefined : lib.folderById.get(filter);
-  const currentNode = filter === 'all' ? undefined : findNode(lib.tree, filter);
+    lib.ready && isFolderView && !lib.folderById.has(requestedFilter) ? 'all' : requestedFilter;
+  const isDuplicates = filter === DUPLICATES;
+  const currentFolder = filter === 'all' || isDuplicates ? undefined : lib.folderById.get(filter);
+  const currentNode = currentFolder ? findNode(lib.tree, filter) : undefined;
   const isInbox = filter === lib.inboxId;
   /** A real folder: can be renamed, deleted, and have folders added inside. */
   const canEditFolder = !!currentFolder && currentFolder.depth >= 2 && !isInbox;
@@ -81,37 +93,104 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
     [lib.inboxId, lib.bookmarks],
   );
 
+  const duplicateCount = useMemo(
+    () => duplicateGroups(lib.bookmarks).reduce((n, group) => n + group.length, 0),
+    [lib.bookmarks],
+  );
+
   // ----- what to list -----
+  /** `#tag` tokens filter exactly; the remaining words go to full-text search. */
+  const parsedQuery = useMemo(() => parseQuery(query), [query]);
+  const tagged = useMemo(
+    () => (parsedQuery.tags.length ? taggedIds(lib.meta, parsedQuery.tags) : null),
+    [lib.meta, parsedQuery],
+  );
   const entries = useMemo(
     () =>
       buildEntries({
         bookmarks: lib.bookmarks,
         filter,
         subfolders: currentNode?.children ?? [],
-        ranking: query.trim() ? search(lib.index, query) : null,
+        ranking: parsedQuery.text ? search(lib.index, parsedQuery.text) : null,
+        tagged,
       }),
-    [lib.bookmarks, lib.index, filter, query, currentNode],
+    [lib.bookmarks, lib.index, filter, parsedQuery, tagged, currentNode],
   );
   const bookmarks = useMemo(() => entries.flatMap((e) => (e.kind === 'bookmark' ? [e.bookmark] : [])), [entries]);
-  const cursor = entries.find((e) => e.id === cursorId) ?? entries[0];
+  const foundAt = entries.findIndex((e) => e.id === cursorAt.id);
+  const cursor = entries[foundAt >= 0 ? foundAt : Math.min(cursorAt.index, entries.length - 1)];
   const cursorBookmark = cursor?.kind === 'bookmark' ? cursor.bookmark : undefined;
   const selectedBookmarks = bookmarks.filter((b) => selection.selected.has(b.id));
   /** What bulk actions apply to: the selection, or else the row under the cursor. */
   const targets = selectedBookmarks.length ? selectedBookmarks : cursorBookmark ? [cursorBookmark] : [];
+  const editTarget = editId ? lib.bookmarks.find((b) => b.id === editId) : undefined;
+
+  // ----- inbox triage -----
+  /** In the Inbox (not searching, nothing selected) the cursor row offers folders to file it into. */
+  const triageOn = isInbox && !query.trim() && selectedBookmarks.length === 0;
+  const triage = useMemo((): TriageSuggestion[] => {
+    if (!triageOn || !cursorBookmark) return [];
+    const self = cursorBookmark;
+    return suggestFolders({
+      page: { title: self.title, url: self.url },
+      folders: lib.folders,
+      // The bookmark itself sits in the Inbox, but must not vote for anything.
+      bookmarks: lib.bookmarks.filter((b) => b.id !== self.id),
+      meta: lib.meta,
+      pickCounts,
+      excludeIds: lib.inboxId ? [lib.inboxId] : [],
+    }).flatMap((s) => {
+      const folder = lib.folderById.get(s.id);
+      if (!folder) return [];
+      const color = findNode(lib.tree, s.id)?.color ?? 'slate';
+      return [{ id: s.id, title: folder.title, path: folder.path.join(' / '), color: `var(--coll-${color})` }];
+    });
+  }, [
+    triageOn,
+    cursorBookmark,
+    lib.folders,
+    lib.bookmarks,
+    lib.meta,
+    lib.inboxId,
+    lib.folderById,
+    lib.tree,
+    pickCounts,
+  ]);
 
   useEffect(() => {
     if (cursor)
       listRef.current?.querySelector(`[data-id="${CSS.escape(cursor.id)}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [cursor]);
 
+  // After saving a pasted link, select the title so typing replaces the hostname.
+  const editOpenFor = dialog === 'edit' ? editTarget?.id : undefined;
+  useEffect(() => {
+    if (!editOpenFor || selectTitleFor.current !== editOpenFor) return;
+    selectTitleFor.current = null;
+    document.querySelector<HTMLInputElement>('[role=dialog] input[aria-label="Title"]')?.select();
+  }, [editOpenFor]);
+
   // ----- actions -----
   const actions = useBookmarkActions(say, selection.clear);
 
+  /** Puts the cursor on a row, remembering its position for when the row goes away. */
+  const setCursorId = (id: string | null) =>
+    setCursorAt({
+      id,
+      index: Math.max(
+        0,
+        entries.findIndex((e) => e.id === id),
+      ),
+    });
+  const setQuery = (next: string) => {
+    setQueryState(next);
+    setCursorAt((c) => ({ ...c, index: 0 }));
+  };
   const openFolder = (id: string) => {
     setFilter(id);
     setQuery('');
     selection.clear();
-    setCursorId(null);
+    setCursorAt({ id: null, index: 0 });
   };
   const moveCursor = (delta: number) => {
     if (!entries.length) return;
@@ -125,14 +204,40 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
   const edit = (id: string, kind: 'bookmark' | 'folder') => {
     setCursorId(id);
     setFolderTarget(kind === 'folder' ? id : null);
+    if (kind === 'bookmark') setEditId(id);
     setDialog(kind === 'folder' ? 'rename-folder' : 'edit');
+  };
+  /** Files the cursor bookmark into its `index`-th suggestion; the cursor moves to the row taking its place. */
+  const fileTo = (index: number) => {
+    const target = triage[index];
+    const row = cursorBookmark;
+    if (!target || !row) return;
+    const at = entries.findIndex((e) => e.id === row.id);
+    setCursorAt({ id: entries[at + 1]?.id ?? entries[at - 1]?.id ?? null, index: at });
+    setCursorVisible(true);
+    void actions.fileTo(row, target.id, target.title);
+  };
+  /** Runs the toast's undo once: the toast goes away first, so a second Z cannot repeat it. */
+  const undo = () => {
+    const run = toast?.undo;
+    if (!run) return;
+    dismiss();
+    void run();
   };
   const submitOmnibar = async (background: boolean) => {
     const url = parseUrlInput(query);
     if (url) {
-      await addBookmark({ title: hostOf(url), url, parentId: canEditFolder ? filter : await ensureInbox() });
+      const id = await addBookmark({ title: hostOf(url), url, parentId: canEditFolder ? filter : await ensureInbox() });
       setQuery('');
       say(`Saved ${hostOf(url)}`);
+      // Name it in the same breath: the Edit dialog opens on the new row (once the read model has it)
+      // with the hostname selected, so typing replaces it and Esc keeps it.
+      setCursorVisible(true);
+      setCursorAt({ id, index: 0 });
+      setEditId(id);
+      selectTitleFor.current = id;
+      setDialog('edit');
+      searchRef.current?.blur();
     } else if (cursor?.kind === 'folder') openFolder(cursor.id);
     else if (cursorBookmark) await openBookmark(cursorBookmark.url, { background });
   };
@@ -155,31 +260,38 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
         return;
       }
       const typing = (e.target as HTMLElement).closest('input,textarea,[role=dialog],[role=menu]');
-      if (typing || dialog || menu || rowMenu) return;
+      // An Edit dialog still waiting for its new row does not block keys.
+      const dialogOpen = dialog === 'edit' ? !!editTarget : !!dialog;
+      if (typing || dialogOpen || menu || rowMenu) return;
       handleKey(
         e,
         {
           cursor,
           targets,
           compact,
-          canUndo: !!toast?.undo?.length,
+          canUndo: !!toast?.undo,
           hasTextSelection: !!window.getSelection()?.toString(),
+          triage: triage.length,
         },
         {
           focusSearch: () => searchRef.current?.focus(),
           moveCursor,
           open: (bookmark, opts) => void openBookmark(bookmark.url, opts),
           enterFolder: openFolder,
-          goUp: () => currentFolder && openFolder(currentFolder.depth <= 2 ? 'all' : currentFolder.parentId),
+          goUp: () =>
+            currentFolder
+              ? openFolder(currentFolder.depth <= 2 ? 'all' : currentFolder.parentId)
+              : isDuplicates && openFolder('all'),
           toggleSelect: (bookmark) => selection.toggle(bookmark.id),
           edit: (entry) => edit(entry.id, entry.kind),
           confirmDelete: () => setDialog('delete'),
           deleteFolder: (id) => (setFolderTarget(id), setDialog('delete-folder')),
           deleteNow: (rows) => void actions.deleteBookmarks(rows),
           moveTargets: () => setDialog('move'),
+          fileTo,
           newFolder: () => setDialog('new-folder'),
           copyLink: (bookmark) => void actions.copyLink(bookmark),
-          undo: () => toast?.undo && void actions.undo(toast.undo),
+          undo,
           clearSelection: () => (selection.clear(), dismiss()),
           openSwitcher: () =>
             compact ? (selectRef.current?.focus(), selectRef.current?.showPicker?.()) : setMenu('switcher'),
@@ -195,15 +307,30 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
   });
 
   // ----- rendering -----
-  const label = filter === 'all' ? 'All bookmarks' : currentFolder?.title || 'Folder';
-  const dot = filter === 'all' ? 'var(--ink)' : isInbox ? undefined : `var(--coll-${currentNode?.color ?? 'slate'})`;
+  const label = filter === 'all' ? 'All bookmarks' : isDuplicates ? 'Duplicates' : currentFolder?.title || 'Folder';
+  const dot =
+    filter === 'all'
+      ? 'var(--ink)'
+      : isDuplicates
+        ? 'var(--faint)'
+        : isInbox
+          ? undefined
+          : `var(--coll-${currentNode?.color ?? 'slate'})`;
+  const empty = emptyMessage({
+    tags: parsedQuery.tags,
+    tagsExist: !!tagged?.size,
+    text: parsedQuery.text,
+    filter,
+    isInbox,
+  });
+  const showPath = filter === 'all' || isDuplicates || !!query.trim();
   const placeholder = compact
     ? 'Search or paste link'
     : filter === 'all'
       ? 'Insert a link, or just search…'
       : `Search in ${label}, or paste a link…`;
   const close = () => setDialog(null);
-  const editedMeta = cursorBookmark ? lib.meta.get(cursorBookmark.id) : undefined;
+  const editedMeta = editTarget ? lib.meta.get(editTarget.id) : undefined;
   const topFolders = [
     ...(inbox ? [{ id: inbox.id, title: inbox.title }] : []),
     ...lib.tree.filter((n) => !n.isRoot).map((n) => ({ id: n.id, title: n.title })),
@@ -235,6 +362,7 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
           folders={lib.folders}
           inbox={inbox}
           totalBookmarks={lib.bookmarks.length}
+          duplicateCount={duplicateCount}
           currentFilter={filter}
           canEditFolder={canEditFolder}
           onNewFolder={() => setDialog('new-folder')}
@@ -267,6 +395,7 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
                 value={filter}
                 folders={lib.folders}
                 inboxId={lib.inboxId}
+                duplicateCount={duplicateCount}
                 onChange={openFolder}
               />
             )}
@@ -281,9 +410,10 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
 
           <div role="listbox" aria-label="Bookmarks" className={`flex flex-col gap-0.5 ${compact ? '' : '-mx-3'}`}>
             {!lib.ready && <p className="p-6 text-muted">Loading…</p>}
-            {lib.ready && !entries.length && <Empty hasQuery={!!query.trim()} inFolder={filter !== 'all'} />}
+            {lib.ready && !entries.length && <Empty title={empty.title} hint={empty.hint} />}
             {entries.map((entry) => {
-              const focused = cursorVisible && entry.id === cursor?.id;
+              // Triage is about the row in hand, so the Inbox shows its cursor from the start.
+              const focused = (cursorVisible || triageOn) && entry.id === cursor?.id;
               const hover = () => (setCursorVisible(true), setCursorId(entry.id));
               if (entry.kind === 'folder') {
                 return (
@@ -306,8 +436,11 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
                   focused={focused}
                   selected={selection.selected.has(entry.id)}
                   tags={lib.meta.get(entry.id)?.tags ?? []}
-                  where={filter === 'all' || query.trim() ? bookmark.path.join(' / ') : ''}
+                  where={showPath ? bookmark.path.join(' / ') : ''}
+                  triage={triageOn && focused ? triage : undefined}
                   onFocus={hover}
+                  onTag={(tag) => setQuery(`#${tag}`)}
+                  onFile={fileTo}
                   onOpen={(background) => void openBookmark(bookmark.url, { background })}
                   onToggle={() => selection.toggle(entry.id)}
                   onMenu={(x, y) => (hover(), setRowMenu({ x, y, id: entry.id }))}
@@ -318,10 +451,16 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
 
-      <KeyHints selectedCount={selectedBookmarks.length} compact={compact} />
+      <KeyHints selectedCount={selectedBookmarks.length} triageCount={triageOn ? triage.length : 0} compact={compact} />
 
-      {dialog === 'edit' && cursorBookmark && (
-        <EditDialog b={cursorBookmark} tags={editedMeta?.tags ?? []} note={editedMeta?.note ?? ''} onClose={close} />
+      {dialog === 'edit' && editTarget && (
+        <EditDialog
+          key={editTarget.id}
+          b={editTarget}
+          tags={editedMeta?.tags ?? []}
+          note={editedMeta?.note ?? ''}
+          onClose={close}
+        />
       )}
       {dialog === 'move' && (
         <MoveDialog
@@ -411,13 +550,7 @@ export function Dashboard({ compact = false }: { compact?: boolean }) {
         />
       )}
 
-      {toast && (
-        <Toast
-          message={toast.message}
-          action={toast.undo?.length ? 'Undo' : undefined}
-          onAction={() => toast.undo && void actions.undo(toast.undo)}
-        />
-      )}
+      {toast && <Toast message={toast.message} action={toast.undo ? 'Undo' : undefined} onAction={undo} />}
     </div>
   );
 }

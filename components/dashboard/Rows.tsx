@@ -6,18 +6,69 @@ import { Favicon } from '@/components/favicon/Favicon';
 import { FolderIcon } from '@/components/ui/icons';
 import { Kbd } from '@/components/ui';
 
-/** Shown when a folder or search has nothing to list. */
-export function Empty({ hasQuery, inFolder }: { hasQuery: boolean; inFolder: boolean }) {
+/** Shown when a view has nothing to list; the wording comes from `emptyMessage`. */
+export function Empty({ title, hint }: { title: string; hint: string }) {
   return (
     <div className="grid place-items-center p-16 text-center text-muted">
       <div>
-        <p className="m-0 mb-1 text-ink">
-          {hasQuery ? 'Nothing matches' : inFolder ? 'This folder is empty' : 'Nothing here yet'}
-        </p>
-        <p className="m-0 text-[13px]">
-          {hasQuery ? 'Try fewer words, or paste a link to save it.' : 'Press Alt+S on any page to save it.'}
-        </p>
+        <p className="m-0 mb-1 text-ink">{title}</p>
+        <p className="m-0 text-[13px]">{hint}</p>
       </div>
+    </div>
+  );
+}
+
+/** A folder offered for filing an Inbox bookmark, as the triage line shows it. */
+export interface TriageSuggestion {
+  id: string;
+  title: string;
+  /** Full folder path, shown as a tooltip. */
+  path: string;
+  /** CSS colour of the folder's dot. */
+  color: string;
+}
+
+/**
+ * The line under the highlighted Inbox bookmark: up to three suggested folders, each filed with its
+ * number key or a click, or a hint to move it by hand when nothing is suggested.
+ */
+function TriageLine({
+  suggestions,
+  compact,
+  onFile,
+}: {
+  suggestions: TriageSuggestion[];
+  compact: boolean;
+  onFile: (index: number) => void;
+}) {
+  return (
+    <div
+      data-triage
+      className={`flex min-w-0 basis-full items-center gap-1.5 overflow-hidden text-[12px] text-muted ${compact ? 'pl-8' : 'pl-7'}`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {suggestions.length ? (
+        <>
+          <span className="shrink-0">File to</span>
+          {suggestions.map((s, i) => (
+            <button
+              key={s.id}
+              type="button"
+              title={`File to ${s.path}`}
+              onClick={() => onFile(i)}
+              className="inline-flex min-w-0 cursor-pointer items-center gap-1.5 rounded-md border-0 bg-ground py-0.5 pl-1 pr-2 text-[12px] font-medium text-ink-soft hover:bg-select hover:text-ink"
+            >
+              <Kbd>{String(i + 1)}</Kbd>
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: s.color }} />
+              <span className="truncate">{s.title}</span>
+            </button>
+          ))}
+        </>
+      ) : (
+        <span className="inline-flex items-center gap-1">
+          <Kbd>M</Kbd> move
+        </span>
+      )}
     </div>
   );
 }
@@ -73,7 +124,11 @@ export function Row(props: {
   selected: boolean;
   where: string;
   tags: string[];
+  /** Folder suggestions for Inbox triage; only the highlighted Inbox row gets them. */
+  triage?: TriageSuggestion[];
   onFocus: () => void;
+  onTag: (tag: string) => void;
+  onFile: (index: number) => void;
   onOpen: (bg: boolean) => void;
   onToggle: () => void;
   onMenu: (x: number, y: number) => void;
@@ -99,7 +154,7 @@ export function Row(props: {
       onClick={(e) => (e.metaKey || e.ctrlKey ? props.onToggle() : props.onOpen(false))}
       onAuxClick={(e) => e.button === 1 && props.onOpen(true)}
       onContextMenu={(e) => (e.preventDefault(), props.onMenu(e.clientX, e.clientY))}
-      className={`group flex shrink-0 cursor-pointer items-center justify-between gap-1.5 rounded-[14px] border border-transparent ${compact ? 'px-2.5 py-2' : 'px-4 py-3'} ${selected ? 'bg-select' : focused ? 'bg-hover' : ''}`}
+      className={`group flex shrink-0 cursor-pointer flex-wrap items-center justify-between gap-1.5 rounded-[14px] border border-transparent ${compact ? 'px-2.5 py-2' : 'px-4 py-3'} ${selected ? 'bg-select' : focused ? 'bg-hover' : ''}`}
     >
       <div className={`flex min-w-0 flex-1 items-center gap-2 ${compact ? '' : 'mr-4'}`}>
         {icon}
@@ -126,12 +181,15 @@ export function Row(props: {
               </span>
             )}
             {tags.map((t) => (
-              <span
+              <button
                 key={t}
-                className="hidden shrink-0 rounded-md bg-surface px-1.5 text-[12px] text-ink-soft sm:inline"
+                type="button"
+                title={`Show every bookmark tagged #${t}`}
+                onClick={(e) => (e.stopPropagation(), props.onTag(t))}
+                className="hidden shrink-0 cursor-pointer rounded-md border-0 bg-surface px-1.5 text-[12px] text-ink-soft hover:bg-select hover:text-ink sm:inline"
               >
                 #{t}
-              </span>
+              </button>
             ))}
           </>
         )}
@@ -150,6 +208,7 @@ export function Row(props: {
           </span>
         </div>
       )}
+      {props.triage && <TriageLine suggestions={props.triage} compact={compact} onFile={props.onFile} />}
     </div>
   );
 }

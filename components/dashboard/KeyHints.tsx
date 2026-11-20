@@ -7,8 +7,19 @@ const Hint = ({ children, label }: { children: ReactNode; label: string }) => (
   </span>
 );
 
-/** The quiet line of shortcuts under the list. It switches to selection actions while rows are selected. */
-export function KeyHints({ selectedCount, compact }: { selectedCount: number; compact: boolean }) {
+/**
+ * The quiet line of shortcuts under the list. It switches to selection actions while rows are
+ * selected, and leads with the filing keys while the Inbox offers suggestions (`triageCount`).
+ */
+export function KeyHints({
+  selectedCount,
+  triageCount,
+  compact,
+}: {
+  selectedCount: number;
+  triageCount: number;
+  compact: boolean;
+}) {
   return (
     <footer className="relative z-10 flex h-10 shrink-0 items-center justify-center gap-4 overflow-hidden whitespace-nowrap text-[12px] text-muted">
       {selectedCount > 0 ? (
@@ -26,6 +37,16 @@ export function KeyHints({ selectedCount, compact }: { selectedCount: number; co
         </>
       ) : (
         <>
+          {triageCount > 0 && (
+            <Hint label="file">
+              <Kbd>1</Kbd>
+              {triageCount > 1 && (
+                <>
+                  –<Kbd>{String(triageCount)}</Kbd>
+                </>
+              )}
+            </Hint>
+          )}
           <Hint label="move">
             <Kbd>J</Kbd>
             <Kbd>K</Kbd>

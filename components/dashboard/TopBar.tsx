@@ -29,6 +29,8 @@ interface TopBarProps {
   folders: Folder[];
   inbox: InboxInfo | null;
   totalBookmarks: number;
+  /** Bookmarks that share a URL with another; the switcher offers the Duplicates view when above 0. */
+  duplicateCount: number;
   currentFilter: string;
   /** The current view is a folder that can be renamed, deleted, or added to. */
   canEditFolder: boolean;
@@ -90,6 +92,7 @@ export function TopBar(p: TopBarProps) {
                   folders={p.folders}
                   inbox={p.inbox}
                   total={p.totalBookmarks}
+                  duplicates={p.duplicateCount}
                   current={p.currentFilter}
                   canDelete={p.canEditFolder}
                   canRename={p.canEditFolder}

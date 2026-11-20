@@ -12,6 +12,8 @@ interface SwitcherProps {
   folders: Folder[];
   inbox: InboxInfo | null;
   total: number;
+  /** Bookmarks saved more than once; the Duplicates entry shows only when there are some. */
+  duplicates: number;
   current: string;
   canDelete: boolean;
   canRename: boolean;
@@ -59,6 +61,13 @@ export function SwitcherMenu(props: SwitcherProps) {
             <span className="h-2.5 w-2.5 rounded-full bg-ink" />
             <span className="flex-1">All bookmarks</span>
             {all ? <Check /> : <span className="text-[13px] text-muted">{props.total}</span>}
+          </button>
+        )}
+        {!picker.query && (props.duplicates > 0 || current === 'duplicates') && (
+          <button onClick={() => props.onPick('duplicates')} className={`${menuItem} hover:bg-hover`}>
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--faint)' }} />
+            <span className="flex-1">Duplicates</span>
+            {current === 'duplicates' ? <Check /> : <span className="text-[13px] text-muted">{props.duplicates}</span>}
           </button>
         )}
         <FolderList picker={picker} current={current} onPick={props.onPick} className="max-h-[320px]" />

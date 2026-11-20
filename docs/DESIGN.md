@@ -65,6 +65,8 @@ In code, use the semantic Tailwind names (`bg-ground`, `bg-hover`, `bg-select`, 
 
 - The row highlight appears after the first hover or key press, like a plain list.
 - Hovering a row swaps its date for `⌘ Enter`.
+- In the Inbox the highlighted row grows a second line of suggested folders (keycap, folder dot, name) on `ground`-filled chips, so they read on the hover fill in both themes. The line sits inside the row, so hovering never shifts the row under the pointer.
+- Tag chips are buttons: a click filters by the tag and never opens the row.
 - Menus are dropdowns with a filter box where lists can be long. `↑↓` moves, `↵` selects, `Esc` closes.
 - Destructive actions: one bookmark deletes immediately with an Undo toast; several, or a whole folder, ask first.
 - Keyboard symbols (`⌫ ↵ ⌘ ⇧ ↑ ↓`) are drawn icons, not font glyphs, so they stay crisp and aligned.

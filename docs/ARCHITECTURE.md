@@ -100,10 +100,14 @@ Dependency direction is strictly `components -> lib/react -> lib/{actions,core,f
 - `crumbTrail()` and `collapseTrail()` (`crumbs.ts`) build the folder breadcrumb in the top bar.
 - `buildEntries()` decides the list: all bookmarks, or a folder's subfolders then bookmarks, or ranked search results.
 - `handleKey()` in `keymap.ts` is a pure function from a key event and a state snapshot to a call on an actions object. It is unit-tested without a DOM.
-- `useBookmarkActions` performs moves, deletes (with undo toasts), copy and icon refresh.
+- `useBookmarkActions` performs moves, Inbox filing, deletes, copy and icon refresh. Moves and deletes hand the toast an
+  undo callback: deletes restore tombstones, moves replay the `MoveRecord`s (`parentId`, `index`) that `moveBookmarks` returns.
+- Inbox triage runs `suggestFolders` (`lib/core/suggest.ts`) for the cursor row only; `fileBookmark` moves it and counts a folder pick.
+- `parseQuery()` (`lib/core/search.ts`) splits `#tag` filters from the words searched for; a pasted link is never a filter.
 - Reads come from `useLibrary()`. Writes go through `lib/actions`.
 
-Folder navigation is a `filter` (`'all'` or a folder id). A deleted folder falls back to `'all'` without effects.
+Folder navigation is a `filter`: `'all'`, `'duplicates'` (bookmarks sharing `normUrl`, grouped by `duplicateGroups()`), or a
+folder id. A deleted folder falls back to `'all'` without effects.
 
 ## Favicons
 

@@ -13,6 +13,7 @@ const KEYS: [string, string][] = [
   ['Right-click', 'Row menu'],
   ['⌘C', 'Copy link'],
   ['⌘E / E', 'Edit (rename a folder)'],
+  ['Tab', 'Complete a #tag while typing'],
   ['M', 'Move to a folder'],
   ['X', 'Select / deselect'],
   ['⌫ / Del / ⌘⌫', 'Delete (undo with Z)'],

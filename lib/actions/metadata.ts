@@ -1,21 +1,7 @@
 import { db } from '@/lib/core/db';
 import type { Meta } from '@/lib/core/types';
 
-/**
- * Splits free text such as `read later #rust #Docs` into the plain note and a
- * de-duplicated, lower-cased tag list. A tag is `#` followed by letters, digits, `_` or `-`.
- */
-export function parseTags(input: string): { text: string; tags: string[] } {
-  const tags: string[] = [];
-  const text = input
-    .replace(/(^|\s)#([\p{L}\p{N}_-]+)/gu, (_match, _lead, tag: string) => {
-      tags.push(tag.toLowerCase());
-      return ' ';
-    })
-    .replace(/\s+/g, ' ')
-    .trim();
-  return { text, tags: [...new Set(tags)] };
-}
+export { formatNote, parseTags } from '@/lib/core/tags';
 
 /**
  * Writes Folio-only metadata (tags, note) for a bookmark. Fields left out of `patch` keep their

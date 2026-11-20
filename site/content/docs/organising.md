@@ -26,7 +26,7 @@ Folders can sit inside folders as deep as you like. In the full page:
 
 ## Tags and notes
 
-Press `E` on a bookmark to edit its title, link, tags and a note. Search matches tags and notes too, so a few words now save a hunt later. Tags and notes are stored in your browser profile on this device, not in the bookmark itself.
+Press `E` on a bookmark to edit its title, link, tags and a note. Search matches tags and notes too, so a few words now save a hunt later. While you type a `#tag`, Folio shows the rest of your most-used matching tag in faint text; `Tab` accepts it, so `#rust` does not drift into `#rustlang`. The popup takes a note and tags as you save a page, and `E` there edits them once it is saved. Tags and notes are stored in your browser profile on this device, not in the bookmark itself.
 
 ## Duplicates
 

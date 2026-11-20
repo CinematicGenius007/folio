@@ -26,6 +26,8 @@ Change these in `chrome://extensions/shortcuts`, or in Firefox and Zen under `ab
 | `1` to `9`       | Save into that folder             |
 | `↑` `↓`, `Enter` | Pick a folder and save            |
 | `/`              | Search every folder, at any depth |
+| `E`              | Edit a saved page's note and tags |
+| `Tab`            | Complete the #tag you are typing  |
 | `Esc`            | Close                             |
 
 ## In the full page and side panel

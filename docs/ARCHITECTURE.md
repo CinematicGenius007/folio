@@ -62,10 +62,11 @@ lib/
     scheduler.ts      Debounced, non-overlapping sync runs
     tree.ts           Folder tree and the rows a folder picker shows
     suggest.ts        Local folder ranking for the save popup (host, name, picks)
+    tags.ts           #tag parsing and the ranking behind inline tag completion
     search.ts         MiniSearch index over titles, URLs, tags, notes and paths
   actions/          Everything that changes data: bookmarks, tags and notes, backup
   favicon/          Letter-tile palette, Chromium icon cache, site fetcher, network guard
-  react/            Hooks: useLibrary, useSetting, useBackground, useTheme, useObjectUrl
+  react/            Hooks: useLibrary, useSetting, useBackground, useTheme, useObjectUrl, useRankedTags
   util/             URL safety and normalisation, date formatting
 components/
   dashboard/        The bookmark browser: entries (pure), keymap (pure), TopBar, Omnibar, Rows, hooks

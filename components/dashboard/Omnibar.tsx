@@ -63,12 +63,15 @@ export function FolderSelect({
   value,
   folders,
   inboxId,
+  duplicateCount,
   onChange,
 }: {
   selectRef: RefObject<HTMLSelectElement | null>;
   value: string;
   folders: Folder[];
   inboxId: string | null;
+  /** Shown as a "Duplicates" option when above 0. */
+  duplicateCount: number;
   onChange: (folderId: string) => void;
 }) {
   const options = folders.filter((f) => f.depth >= 2).sort((a, b) => a.path.join('/').localeCompare(b.path.join('/')));
@@ -81,6 +84,9 @@ export function FolderSelect({
       aria-label="Folder"
     >
       <option value="all">All</option>
+      {(duplicateCount > 0 || value === 'duplicates') && (
+        <option value="duplicates">Duplicates ({duplicateCount})</option>
+      )}
       {options.map((f) => (
         <option key={f.id} value={f.id}>
           {f.id === inboxId ? 'Inbox' : f.path.join(' / ')}

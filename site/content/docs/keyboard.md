@@ -26,6 +26,8 @@ Change these in `chrome://extensions/shortcuts`, or in Firefox and Zen under `ab
 | `1` to `9`       | Save into that folder             |
 | `↑` `↓`, `Enter` | Pick a folder and save            |
 | `/`              | Search every folder, at any depth |
+| `E`              | Edit a saved page's note and tags |
+| `Tab`            | Complete the #tag you are typing  |
 | `Esc`            | Close                             |
 
 ## In the full page and side panel
@@ -41,14 +43,17 @@ Change these in `chrome://extensions/shortcuts`, or in Firefox and Zen under `ab
 | `C`                                 | Folder switcher: type to find a folder at any depth |
 | `O`                                 | Folio menu: theme, shortcuts, backup                |
 | `E`, `⌘E`                           | Edit, or rename a folder                            |
-| `M`                                 | Move to a folder                                    |
+| `M`                                 | Move to a folder (undo with `Z`)                    |
+| `1` to `3`                          | In the Inbox: file into a suggested folder          |
 | `X`                                 | Select or deselect, for acting on several at once   |
 | `⌘C`                                | Copy the link                                       |
 | `Backspace`, `Delete`, `⌘Backspace` | Delete (undo with `Z`)                              |
-| `Z`                                 | Undo the last delete                                |
+| `Z`                                 | Undo the last delete, move or filing                |
 | `Shift+N`                           | New folder here                                     |
 | `B`                                 | Background settings                                 |
 | `Esc`                               | Clear the search or close a menu                    |
 | `?`                                 | Show every shortcut                                 |
 
 On Windows and Linux, read `⌘` as `Ctrl`. A right-click on any row opens the same actions as a menu.
+
+In the search box, `#tag` lists only bookmarks with that tag; add words to narrow it further.

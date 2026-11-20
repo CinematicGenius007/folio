@@ -2,15 +2,20 @@ import { useState } from 'react';
 import { parseTags, setMeta, updateBookmark } from '@/lib/actions';
 import { isSafeUrl } from '@/lib/util/url';
 import type { Bm } from '@/lib/core/types';
-import { Button, Dialog, Input, Kbd } from '@/components/ui';
+import { useRankedTags } from '@/lib/react';
+import { Button, Dialog, Input, Kbd, TagInput } from '@/components/ui';
 
-/** Edits a bookmark's title and URL (written to the browser) and its tags and note (stored by Folio). */
+/**
+ * Edits a bookmark's title and URL (written to the browser) and its tags and note (stored by Folio).
+ * The tags field completes existing tags inline (`Tab` accepts).
+ */
 export function EditDialog({ b, tags, note, onClose }: { b: Bm; tags: string[]; note: string; onClose: () => void }) {
   const [title, setTitle] = useState(b.title);
   const [url, setUrl] = useState(b.url);
   const [tagText, setTagText] = useState(tags.map((t) => `#${t}`).join(' '));
   const [noteText, setNoteText] = useState(note);
   const [error, setError] = useState('');
+  const rankedTags = useRankedTags(b.url);
   const save = async () => {
     const cleanUrl = url.trim();
     // Only send what changed, so a bookmarklet's title can be edited without touching its (kept) URL.
@@ -36,7 +41,7 @@ export function EditDialog({ b, tags, note, onClose }: { b: Bm; tags: string[]; 
             {error}
           </p>
         )}
-        <Input value={tagText} onChange={(e) => setTagText(e.target.value)} placeholder="#tags" aria-label="Tags" />
+        <TagInput value={tagText} onValueChange={setTagText} tags={rankedTags} placeholder="#tags" aria-label="Tags" />
         <textarea
           value={noteText}
           onChange={(e) => setNoteText(e.target.value)}

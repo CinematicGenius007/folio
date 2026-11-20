@@ -15,6 +15,8 @@ export interface KeyState {
   canUndo: boolean;
   /** The user has text highlighted on the page, so ⌘C should copy that instead of the link. */
   hasTextSelection: boolean;
+  /** How many suggested folders the cursor row offers for filing (Inbox triage); 0 when none. */
+  triage: number;
 }
 
 /** What a key can make the dashboard do. */
@@ -30,6 +32,8 @@ export interface KeyActions {
   deleteFolder(id: string): void;
   deleteNow(rows: Bm[]): void;
   moveTargets(): void;
+  /** Files the cursor bookmark into its `index`-th suggested folder (0-based). */
+  fileTo(index: number): void;
   newFolder(): void;
   copyLink(bookmark: Bm): void;
   undo(): void;
@@ -94,6 +98,19 @@ export function handleKey(e: KeyInput, state: KeyState, a: KeyActions, selection
     case 'Delete':
       if (cursor?.kind === 'folder' && !selectionActive) return handled(() => a.deleteFolder(cursor.id));
       return targets.length ? handled(deleteTargets) : false;
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9': {
+      // Inbox triage: digits pick a suggested folder for the cursor row (not for a selection).
+      const index = Number(e.key) - 1;
+      return bookmark && !selectionActive && index < state.triage ? handled(() => a.fileTo(index)) : false;
+    }
     case 'N':
       return handled(a.newFolder);
     case 'c':

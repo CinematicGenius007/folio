@@ -46,7 +46,15 @@ let actions: { [K in keyof KeyActions]: ReturnType<typeof vi.fn> };
 const run = (event: KeyInput, state: Partial<KeyState> = {}, selectionActive = false) =>
   handleKey(
     event,
-    { cursor: bookmarkEntry, targets: [bookmark], compact: false, canUndo: false, hasTextSelection: false, ...state },
+    {
+      cursor: bookmarkEntry,
+      targets: [bookmark],
+      compact: false,
+      canUndo: false,
+      hasTextSelection: false,
+      triage: 0,
+      ...state,
+    },
     actions as unknown as KeyActions,
     selectionActive,
   );
@@ -143,6 +151,36 @@ describe('actions on bookmarks', () => {
     actions.copyLink.mockClear();
     expect(run(key('c', { metaKey: true }), { hasTextSelection: true })).toBe(false);
     expect(actions.copyLink).not.toHaveBeenCalled();
+  });
+});
+
+describe('inbox triage', () => {
+  it('files the cursor row into the matching suggestion with 1 to 3', () => {
+    expect(run(key('1'), { triage: 3 })).toBe(true);
+    expect(actions.fileTo).toHaveBeenLastCalledWith(0);
+    run(key('3'), { triage: 3 });
+    expect(actions.fileTo).toHaveBeenLastCalledWith(2);
+  });
+
+  it('ignores digits beyond the suggestions offered', () => {
+    expect(run(key('2'), { triage: 1 })).toBe(false);
+    expect(run(key('1'))).toBe(false);
+    expect(run(key('9'), { triage: 3 })).toBe(false);
+    expect(actions.fileTo).not.toHaveBeenCalled();
+  });
+
+  it('does not file a folder row, a selection, or with modifiers', () => {
+    expect(run(key('1'), { triage: 3, cursor: folderEntry, targets: [] })).toBe(false);
+    expect(run(key('1'), { triage: 3 }, true)).toBe(false);
+    expect(run(key('1', { metaKey: true }), { triage: 3 })).toBe(false);
+    expect(run(key('1', { altKey: true }), { triage: 3 })).toBe(false);
+    expect(actions.fileTo).not.toHaveBeenCalled();
+  });
+
+  it('leaves the browser default alone when a digit is unused', () => {
+    const digit = key('1');
+    run(digit);
+    expect(digit.preventDefault).not.toHaveBeenCalled();
   });
 });
 

@@ -61,11 +61,15 @@ which also covers downloading a release and building from source.
 | Popup     | `1`-`9`, `↑` `↓`, `↵`   | Pick a folder and save                  |
 | Popup     | `/`                     | Search every folder, at any depth       |
 | Popup     | `0`                     | Open the dashboard (works on any page)  |
+| Popup     | `E`                     | Edit the note and #tags of a saved page |
+| Popup     | `Tab`                   | Complete a #tag (also in the Edit box)  |
 | Dashboard | `J` `K` or `↓` `↑`      | Move through the list                   |
 | Dashboard | `↵`, `⇧↵`               | Open, open in the background            |
 | Dashboard | `L` `→`, `H` `←`        | Enter a folder, go up                   |
 | Dashboard | `C`, `O`                | Folder switcher, Folio menu             |
 | Dashboard | `E`, `M`, `X`, `⌫`, `Z` | Edit, move, select, delete, undo        |
+| Dashboard | `1`-`3` in the Inbox    | File into a suggested folder            |
+| Dashboard | `#tag` in search        | Only bookmarks with that tag            |
 | Dashboard | `⌘F` `⌘K` `/`           | Search, or paste a link to save it      |
 | Dashboard | `?`                     | Every shortcut                          |
 

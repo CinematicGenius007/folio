@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { addBookmark, parseTags, restoreTombstones } from '@/lib/actions';
 import type { Tombstone } from '@/lib/core/types';
+import { rankTags } from '@/lib/core/tags';
 import { prunePickCounts, resolveSaveActiveKey, suggestFolders } from '@/lib/core/suggest';
 import { findNode, type PickerSuggestion } from '@/lib/core/tree';
 import { hasBrowserFavicons, storeIconFromUrl } from '@/lib/favicon';
 import type { Library } from '@/lib/react';
-import { originOf } from '@/lib/util/url';
+import { hostOf, originOf } from '@/lib/util/url';
 import { FolderList, usePicker } from '@/components/folders/FolderList';
-import { Button, Kbd } from '@/components/ui';
+import { Button, Kbd, TagInput } from '@/components/ui';
 import { openFolio } from './openFolio';
 import type { PageTab } from './types';
 
 /**
  * Save a new page: pick a folder (1–9, ↑↓, or `/` to search every folder) and optionally type a
- * note with #tags. A text starting with `/` is a folder search instead of a note.
+ * note with #tags (completed inline from existing tags; `Tab` accepts). A text starting with `/` is a
+ * folder search instead of a note, and completion is off while it is.
  * Ranked suggestions (host affinity, name overlap, prior picks) sit above the tree when any
  * folder clears the score floor; the top one is pre-selected only when it clears the confidence bar.
  */
@@ -92,6 +94,10 @@ export function SavePanel({
     initialExpanded: (expandFor ? (lib.folderById.get(expandFor)?.pathIds ?? []) : []).slice(0, -1),
     initialActiveKey,
   });
+  const rankedTags = useMemo(
+    () => rankTags(lib.meta.values(), lib.bookmarks, hostOf(tab.url)),
+    [lib.meta, lib.bookmarks, tab.url],
+  );
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -155,19 +161,20 @@ export function SavePanel({
         <FolderList picker={picker} onPick={(id) => void save(id)} className="max-h-[192px]" itemClass="h-8" />
       </div>
       <div className="px-4 pb-3">
-        <input
+        <TagInput
           ref={inputRef}
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onValueChange={setText}
+          tags={rankedTags}
+          complete={!searching}
           placeholder="Note, #tag, or / to find a folder"
           aria-label="Note, tags, or folder search"
-          className="h-8 w-full rounded-[10px] border border-control bg-transparent px-3 text-[14px] text-ink placeholder:text-muted"
         />
       </div>
-      <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <span className="flex items-center gap-3 text-[12px] text-muted">
+      <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
+        <span className="flex items-center gap-2 whitespace-nowrap text-[12px] text-muted">
           {removed ? (
-            <>
+            <span>
               Removed.{' '}
               <button
                 onClick={() => void undo()}
@@ -175,21 +182,29 @@ export function SavePanel({
               >
                 Undo
               </button>
-            </>
+            </span>
           ) : (
-            <>
+            <span className="inline-flex items-center gap-1">
               <Kbd>↑↓</Kbd> choose
-            </>
+            </span>
           )}
+          {/* The placeholder says this too, but it disappears once you type; this hint stays. */}
+          <button
+            onClick={() => (setText('/'), inputRef.current?.focus())}
+            className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
+          >
+            <Kbd>/</Kbd> folders
+          </button>
           <button
             onClick={() => void openFolio()}
-            className="inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
+            className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
           >
             Open Folio <Kbd>0</Kbd>
           </button>
         </span>
         <Button
           variant="primary"
+          className="shrink-0"
           disabled={busy || !picker.rows.length}
           onClick={() => void save(picker.rows[picker.active]?.id ?? '')}
         >

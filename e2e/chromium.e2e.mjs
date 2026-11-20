@@ -455,12 +455,91 @@ try {
     `${Math.round(heightSaving)}px -> ${Math.round(heightSaved)}px`,
   );
 
+  // ---- saved popup: edit the note and #tags in place ----
+  const noteField = popup.getByLabel('Note and tags', { exact: true });
+  check('saved popup offers to add a note', (await popup.locator('button', { hasText: 'Add a note' }).count()) === 1);
+  await popup.keyboard.press('e');
+  await noteField.waitFor();
+  await popup.keyboard.type('keep m0 #rustlang');
+  check(
+    'typing in the saved note ignores the popup letter keys (M, 0, E)',
+    (await noteField.inputValue()) === 'keep m0 #rustlang' &&
+      (await popup.locator('text=Move to').count()) === 0 &&
+      !popup.isClosed(),
+    await noteField.inputValue(),
+  );
+  await popup.keyboard.press('Enter');
+  await popup.locator('text=#rustlang').waitFor();
+  check('Enter saves the note and tags from the saved popup', (await popup.locator('text=keep m0').count()) === 1);
+  await popup.keyboard.press('e');
+  await noteField.waitFor();
+  check('E reopens the editor prefilled', (await noteField.inputValue()) === 'keep m0 #rustlang');
+  await noteField.fill('#ru');
+  await sleep(100);
+  check(
+    'a #prefix shows the best existing tag as ghost text',
+    (await noteField.getAttribute('data-completion')) === 'stlang',
+    String(await noteField.getAttribute('data-completion')),
+  );
+  await popup.keyboard.press('Tab');
+  check(
+    'Tab accepts the tag completion',
+    (await noteField.inputValue()) === '#rustlang ',
+    await noteField.inputValue(),
+  );
+  await popup.keyboard.press('Escape');
+  await sleep(200);
+  check(
+    'Esc cancels the note edit without closing the popup',
+    !popup.isClosed() && (await noteField.count()) === 0 && (await popup.locator('text=keep m0').count()) === 1,
+    `editor=${await noteField.count()} note=${await popup.locator('text=keep m0').count()}`,
+  );
+
+  // ---- save popup on a new page: tag completion and a footer that fits ----
+  const footerFits = (p) =>
+    p.evaluate(() => {
+      const footer = document.querySelector('#root > div').lastElementChild;
+      const edge = footer.getBoundingClientRect().right - parseFloat(getComputedStyle(footer).paddingRight);
+      const right = Math.max(...[...footer.querySelectorAll('*')].map((el) => el.getBoundingClientRect().right));
+      // the hints must also keep clear of the Save button
+      const [hints, save] = footer.children;
+      const clear = save.getBoundingClientRect().left - hints.getBoundingClientRect().right >= 8;
+      return clear && right <= edge + 0.5 && document.documentElement.scrollWidth <= 380;
+    });
+  await page.goto(`${server.origin}/fresh-page`);
+  const popupTags = await context.newPage();
+  watch(popupTags);
+  await popupTags.setViewportSize({ width: 380, height: 520 });
+  await popupTags.goto(`${base}/popup.html`);
+  await popupTags.waitForSelector('[role=option]');
+  check(
+    'save popup shows the / folders hint',
+    (await popupTags.locator('button', { hasText: 'folders' }).count()) === 1,
+  );
+  check('save popup footer fits 380px', await footerFits(popupTags));
+  const saveField = popupTags.getByLabel('Note, tags, or folder search');
+  await saveField.fill('read later #ru');
+  await sleep(100);
+  check(
+    'save popup completes tags inline',
+    (await saveField.getAttribute('data-completion')) === 'stlang',
+    String(await saveField.getAttribute('data-completion')),
+  );
+  await popupTags.keyboard.press('ArrowRight');
+  check('→ at the end accepts the completion', (await saveField.inputValue()) === 'read later #rustlang ');
+  await saveField.fill('/x #ru');
+  await sleep(100);
+  check('no tag completion during / folder search', (await saveField.getAttribute('data-completion')) === null);
+  await popupTags.close();
+  await page.goto(`${server.origin}/`);
+
   await popup.keyboard.press('Backspace');
   await sleep(1000);
   check(
     'popup offers Open Folio while saving a page',
     (await popup.locator('button', { hasText: 'Open Folio' }).count()) === 1,
   );
+  check('save popup footer fits 380px with Removed. Undo', await footerFits(popup));
   await popup.keyboard.press('z');
   await sleep(1000);
   const restored = await inWorker(async (url) => (await chrome.bookmarks.search({ url })).length, `${server.origin}/`);

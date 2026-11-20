@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { moveBookmarks, removeBookmarks } from '@/lib/actions';
+import { formatNote, moveBookmarks, parseTags, removeBookmarks, setMeta } from '@/lib/actions';
 import { db } from '@/lib/core/db';
+import { rankTags } from '@/lib/core/tags';
 import type { Tombstone } from '@/lib/core/types';
 import type { Library } from '@/lib/react';
 import { FolderList, usePicker } from '@/components/folders/FolderList';
-import { Button, Kbd } from '@/components/ui';
+import { hostOf } from '@/lib/util/url';
+import { Button, Kbd, TagInput } from '@/components/ui';
 import { openFolio } from './openFolio';
 
 /** The projector writes the tombstone shortly after the browser reports the delete. */
 const TOMBSTONE_DELAY_MS = 300;
 
-/** Summary for a page that is already saved: where it is, with move, remove (undoable) and open-in-Folio. */
+/**
+ * Summary for a page that is already saved: where it is, its note and tags, with move, edit note
+ * (`E`), remove (undoable) and open-in-Folio.
+ */
 export function SavedPanel({
   saved,
   lib,
@@ -22,24 +27,36 @@ export function SavedPanel({
 }) {
   const bookmark = saved[0]!;
   const meta = lib.meta.get(bookmark.id);
+  const hasNote = !!(meta?.note || meta?.tags.length);
   const [moving, setMoving] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const folderLabel =
     bookmark.parentId === lib.inboxId
       ? 'Inbox'
       : lib.folderById.get(bookmark.parentId)?.path.join(' / ') || 'Unknown folder';
 
+  const rankedTags = useMemo(
+    () => rankTags(lib.meta.values(), lib.bookmarks, hostOf(bookmark.url)),
+    [lib.meta, lib.bookmarks, bookmark.url],
+  );
+
   const remove = async () => {
     await removeBookmarks([bookmark.id]);
     setTimeout(async () => onRemoved((await db.tombstones.get(bookmark.id)) ?? null), TOMBSTONE_DELAY_MS);
   };
   useEffect(() => {
-    if (moving) return;
+    // While editing, the note field owns the keyboard: its own ↵ and Esc, and letters are text.
+    if (moving || editing) return;
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'Escape') window.close();
       else if (e.key === 'm') {
         e.preventDefault();
         setMoving(true);
+      } else if (e.key === 'e') {
+        e.preventDefault(); // or the `e` lands in the field that opens on this key
+        setEditing(true);
       } else if (e.key === 'Backspace' || e.key === 'Delete') void remove();
       else if (e.key === '0') void openFolio();
     };
@@ -63,29 +80,118 @@ export function SavedPanel({
             Move <Kbd>M</Kbd>
           </span>
         </button>
-        {(meta?.note || meta?.tags.length) && (
-          <div className="text-[13px] text-ink-soft">
-            {meta.note && <p className="m-0 mb-1">{meta.note}</p>}
-            <div className="flex gap-1">
-              {meta.tags.map((tag) => (
-                <span key={tag} className="rounded-md bg-surface px-1.5 text-[12px]">
-                  #{tag}
-                </span>
-              ))}
-            </div>
-          </div>
+        {editing ? (
+          <NoteEditor
+            initial={formatNote(meta?.note ?? '', meta?.tags ?? [])}
+            tags={rankedTags}
+            onDone={async (value) => {
+              if (value !== null) {
+                const { text, tags } = parseTags(value);
+                await setMeta(bookmark.id, { note: text, tags });
+              }
+              setEditing(false);
+              // Focus would otherwise sit on a footer button, where a stray ↵ acts on it.
+              (document.activeElement as HTMLElement | null)?.blur();
+            }}
+          />
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            aria-label={hasNote ? 'Edit note and tags' : 'Add a note'}
+            className="flex min-h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-[10px] border border-transparent bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-hover"
+          >
+            {hasNote && meta ? (
+              <span className="flex min-w-0 flex-col gap-1 text-ink-soft">
+                {meta.note && <span className="line-clamp-2 break-words">{meta.note}</span>}
+                {meta.tags.length > 0 && (
+                  <span className="flex flex-wrap gap-1">
+                    {meta.tags.map((tag) => (
+                      <span key={tag} className="rounded-md bg-surface px-1.5 text-[12px]">
+                        #{tag}
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-muted">Add a note</span>
+            )}
+            <span className="flex shrink-0 items-center gap-2 text-muted">
+              {hasNote && 'Edit'} <Kbd>E</Kbd>
+            </span>
+          </button>
         )}
         {saved.length > 1 && <p className="m-0 text-[12px] text-muted">Saved {saved.length} times in this profile.</p>}
       </div>
       <div className="flex items-center justify-between px-4 pb-3 pt-1">
-        <Button variant="ghost" onClick={() => void remove()} className="-ml-3" style={{ color: 'var(--danger)' }}>
-          Remove <Kbd>⌫</Kbd>
-        </Button>
-        <Button onClick={() => void openFolio()}>
-          Open in Folio <Kbd>0</Kbd>
-        </Button>
+        {editing ? (
+          <>
+            <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
+              <Kbd>Esc</Kbd> cancel
+            </span>
+            <Button key="save-note" variant="primary" form="saved-note">
+              Save <Kbd>↵</Kbd>
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              key="remove"
+              variant="ghost"
+              onClick={() => void remove()}
+              className="-ml-3"
+              style={{ color: 'var(--danger)' }}
+            >
+              Remove <Kbd>⌫</Kbd>
+            </Button>
+            <Button key="open" onClick={() => void openFolio()}>
+              Open in Folio <Kbd>0</Kbd>
+            </Button>
+          </>
+        )}
       </div>
     </>
+  );
+}
+
+/**
+ * The note and #tags of a saved page as one editable line, the same format the save view takes.
+ * `↵` saves and `Esc` cancels (`onDone(null)`); Esc here never reaches the popup's close-on-Esc.
+ */
+function NoteEditor({
+  initial,
+  tags,
+  onDone,
+}: {
+  initial: string;
+  tags: readonly string[];
+  onDone: (value: string | null) => void | Promise<void>;
+}) {
+  const [text, setText] = useState(initial);
+  return (
+    <form
+      id="saved-note"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void onDone(text);
+      }}
+    >
+      <TagInput
+        autoFocus
+        value={text}
+        onValueChange={setText}
+        tags={tags}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            e.stopPropagation();
+            void onDone(null);
+          }
+        }}
+        placeholder="Note and #tags"
+        aria-label="Note and tags"
+      />
+    </form>
   );
 }
 

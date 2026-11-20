@@ -61,6 +61,8 @@ which also covers downloading a release and building from source.
 | Popup     | `1`-`9`, `↑` `↓`, `↵`   | Pick a folder and save                  |
 | Popup     | `/`                     | Search every folder, at any depth       |
 | Popup     | `0`                     | Open the dashboard (works on any page)  |
+| Popup     | `E`                     | Edit the note and #tags of a saved page |
+| Popup     | `Tab`                   | Complete a #tag (also in the Edit box)  |
 | Dashboard | `J` `K` or `↓` `↑`      | Move through the list                   |
 | Dashboard | `↵`, `⇧↵`               | Open, open in the background            |
 | Dashboard | `L` `→`, `H` `←`        | Enter a folder, go up                   |

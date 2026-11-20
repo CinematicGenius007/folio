@@ -12,6 +12,9 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 - A Duplicates view, in the folder switcher when any link is saved more than once, lists the copies together for cleanup.
 - Saving a pasted link from the search box opens its Edit dialog with the site name selected, so it can be titled in one step.
 - Save popup suggests folders from local signals only: sites already filed under a host, folder-name overlap with the page title, and how often you pick each folder. Ranked rows sit above the tree with a short reason; the tree and `/` search stay as the escape hatch.
+- The popup for a saved page edits its note and #tags in place: press `E` (or click the note, or _Add a note_), `Enter` saves, `Esc` cancels.
+- Inline #tag completion in the popup and the Edit dialog: the rest of your most-used matching tag (ties go to tags used on the same site) shows as faint text, and `Tab` accepts it. No dropdown, so the popup never changes height.
+- The save popup's footer keeps a `/` _folders_ hint, so searching every folder stays discoverable after you start typing.
 
 ### Changed
 

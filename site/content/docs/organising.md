@@ -32,7 +32,7 @@ Pages saved without a folder land in the **Inbox**. Open it with `C`: the highli
 
 ## Tags and notes
 
-Press `E` on a bookmark to edit its title, link, tags and a note. Search matches tags and notes too, so a few words now save a hunt later. Type `#tag` in the search box, or click a tag on a bookmark, to list only the bookmarks with that tag. Tags and notes are stored in your browser profile on this device, not in the bookmark itself.
+Press `E` on a bookmark to edit its title, link, tags and a note. Search matches tags and notes too, so a few words now save a hunt later. While you type a `#tag`, Folio shows the rest of your most-used matching tag in faint text; `Tab` accepts it, so `#rust` does not drift into `#rustlang`. Type `#tag` in the search box, or click a tag on a bookmark, to list only the bookmarks with that tag. The popup takes a note and tags as you save a page, and `E` there edits them once it is saved. Tags and notes are stored in your browser profile on this device, not in the bookmark itself.
 
 ## Duplicates
 

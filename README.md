@@ -66,6 +66,8 @@ which also covers downloading a release and building from source.
 | Dashboard | `L` `→`, `H` `←`        | Enter a folder, go up                   |
 | Dashboard | `C`, `O`                | Folder switcher, Folio menu             |
 | Dashboard | `E`, `M`, `X`, `⌫`, `Z` | Edit, move, select, delete, undo        |
+| Dashboard | `1`-`3` in the Inbox    | File into a suggested folder            |
+| Dashboard | `#tag` in search        | Only bookmarks with that tag            |
 | Dashboard | `⌘F` `⌘K` `/`           | Search, or paste a link to save it      |
 | Dashboard | `?`                     | Every shortcut                          |
 

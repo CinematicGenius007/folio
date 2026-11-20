@@ -134,6 +134,177 @@ try {
   );
   check('unsafe javascript: links are never opened', opened === 0);
 
+  // ---- inbox triage, move undo, duplicates, tag filter, naming a pasted link ----
+  await inWorker(async () => {
+    const other = (await chrome.bookmarks.getTree())[0].children[1];
+    const inbox = other.children.find((c) => c.title === 'Inbox' && !c.url);
+    // A second copy of calculus.dev: host affinity suggests Courses, and it is a duplicate.
+    await chrome.bookmarks.create({ parentId: inbox.id, title: 'Calculus notes', url: 'https://calculus.dev/' });
+    await chrome.bookmarks.create({ parentId: inbox.id, title: 'Unfiled zebra', url: 'https://zebra-unique.example/' });
+  });
+  await sleep(1200);
+  const parentOf = (title) =>
+    inWorker(async (t) => {
+      const [bookmark] = await chrome.bookmarks.search({ title: t });
+      return bookmark ? (await chrome.bookmarks.get(bookmark.parentId))[0].title : null;
+    }, title);
+  const triageLine = () => dash.locator('[data-triage]');
+  /** Puts the cursor on a row by hovering it. The pointer leaves first, because a row that appears under a still pointer gets no mouseenter. */
+  const pointAt = async (row) => {
+    await dash.mouse.move(1, 1);
+    await row.hover();
+    await sleep(100);
+  };
+
+  await dash.keyboard.press('c');
+  await dash.keyboard.type('inbox');
+  await dash.keyboard.press('Enter');
+  await sleep(300);
+  check(
+    'the Inbox highlights a row from the start',
+    (await triageLine().count()) === 1,
+    await triageLine()
+      .allInnerTexts()
+      .then((t) => t.join('|')),
+  );
+  // Both rows were created in the same instant, so their order varies: pick them by name.
+  await pointAt(dash.locator('[role=option]', { hasText: 'Unfiled zebra' }));
+  await sleep(150);
+  check(
+    'a row with nothing to suggest shows only a move hint',
+    /move/.test(await triageLine().innerText()) && !/File to/.test(await triageLine().innerText()),
+    await triageLine().innerText(),
+  );
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
+  await sleep(150);
+  check(
+    'the highlighted Inbox row suggests the folder that holds its site',
+    /File to/.test(await triageLine().innerText()) && /Courses/.test(await triageLine().innerText()),
+    await triageLine().innerText(),
+  );
+  await dash.keyboard.press('1');
+  await sleep(900);
+  check('1 files the row into the first suggestion', (await parentOf('Calculus notes')) === 'Courses');
+  check('filing shows a toast with undo', (await dash.locator('text=Filed to Courses').count()) === 1);
+  check(
+    'the cursor stays on the row that takes its place',
+    (await count(dash)) === 1 &&
+      /Unfiled zebra/.test(await dash.locator('[role=option]:has([data-triage])').innerText()),
+  );
+  await dash.keyboard.press('z');
+  await sleep(900);
+  check('Z moves a filed bookmark back to the Inbox', (await parentOf('Calculus notes')) === 'Inbox');
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
+  await dash.locator('[data-triage] button', { hasText: 'Courses' }).click();
+  await sleep(900);
+  check('a suggestion can be clicked to file the row', (await parentOf('Calculus notes')) === 'Courses');
+  await dash.keyboard.press('Backspace'); // deletes Unfiled zebra, the last row
+  await sleep(900);
+  check('an empty Inbox has its own message', (await dash.locator('text=Your Inbox is clear').count()) === 1);
+
+  // bulk move undo from a folder, through the move dialog
+  await dash.keyboard.press('c');
+  await dash.keyboard.type('courses');
+  await dash.keyboard.press('Enter');
+  await sleep(300);
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
+  await dash.keyboard.press('x');
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus' }).filter({ hasNotText: 'notes' }));
+  await dash.keyboard.press('x');
+  await dash.keyboard.press('m');
+  await dash.keyboard.type('dev tech');
+  await dash.keyboard.press('Enter');
+  await sleep(900);
+  const movedBoth = (await parentOf('Calculus notes')) === 'Dev Tech';
+  await dash.keyboard.press('Meta+z');
+  await sleep(900);
+  check(
+    '⌘Z undoes a move of several bookmarks',
+    movedBoth && (await parentOf('Calculus notes')) === 'Courses',
+    `${movedBoth} ${await parentOf('Calculus notes')}`,
+  );
+
+  // duplicates: both calculus.dev bookmarks, side by side, with their folder shown
+  await dash.keyboard.press('c');
+  const dupEntry = dash.locator('button', { hasText: 'Duplicates' });
+  check('the folder switcher offers Duplicates with a count', /Duplicates\s*2/.test(await dupEntry.innerText()));
+  await dupEntry.click();
+  await sleep(300);
+  const dupRows = await dash.locator('[role=option]').allInnerTexts();
+  check(
+    'the Duplicates view lists copies of one link together with their folders',
+    dupRows.length === 2 && dupRows.every((r) => /Courses/.test(r)),
+    dupRows.join(' | '),
+  );
+  await pointAt(dash.locator('[role=option]', { hasText: 'Calculus notes' }));
+  await dash.keyboard.press('Backspace');
+  await sleep(900);
+  check('⌫ deletes the copy under the cursor', (await dash.locator('text=No duplicates').count()) === 1);
+  await dash.keyboard.press('z');
+  await sleep(900);
+  check('a deleted duplicate comes back with Z', (await count(dash)) === 2);
+  await dash.keyboard.press('h');
+  await sleep(300);
+
+  // tags: add one in the Edit dialog, then filter by it
+  await dash.keyboard.press('/');
+  await dash.keyboard.type('#physics');
+  await sleep(250);
+  check('an unknown tag says so', (await dash.locator('text=No bookmarks tagged #physics').count()) === 1);
+  await dash.keyboard.press('Escape');
+  await pointAt(dash.locator('[role=option]', { hasText: 'Optics primer' }));
+  await dash.keyboard.press('e');
+  await dash.locator('[role=dialog] input[aria-label="Tags"]').fill('#physics');
+  await dash.keyboard.press('Enter');
+  await sleep(400);
+  await dash.keyboard.press('/');
+  await dash.keyboard.type('#Physics');
+  await sleep(250);
+  const tagRows = await dash.locator('[role=option]').allInnerTexts();
+  check(
+    '#tag in the search lists exactly the tagged bookmarks',
+    tagRows.length === 1 && /Optics primer/.test(tagRows[0]),
+    tagRows.join(' | '),
+  );
+  await dash.keyboard.type(' zzzz');
+  await sleep(250);
+  check('words after a tag still narrow the list', (await count(dash)) === 0);
+  await dash.keyboard.press('Escape');
+  await sleep(150);
+  await dash.locator('[role=option] button', { hasText: '#physics' }).click();
+  await sleep(250);
+  check(
+    'clicking a tag chip filters by that tag without opening the row',
+    (await dash.locator('input[aria-label="Search or add"]').inputValue()) === '#physics' &&
+      (await count(dash)) === 1 &&
+      (await context.pages()).every((p) => !p.url().includes('optics.dev')),
+  );
+  await dash.locator('input[aria-label="Search or add"]').fill('');
+
+  // a pasted link is saved, then its Edit dialog opens with the hostname selected
+  await dash.keyboard.press('Meta+f');
+  await dash.keyboard.type('https://paste-title.dev/');
+  await dash.keyboard.press('Enter');
+  const titleInput = dash.locator('[role=dialog] input[aria-label="Title"]');
+  await titleInput.waitFor({ timeout: 3000 });
+  const selected = await titleInput.evaluate((el) => el.value.slice(el.selectionStart, el.selectionEnd));
+  check('saving a pasted link opens Edit with the hostname selected', selected === 'paste-title.dev', selected);
+  await dash.keyboard.type('Pasted title');
+  await dash.keyboard.press('Enter');
+  await sleep(600);
+  const pastedTitle = await inWorker(
+    async () => (await chrome.bookmarks.search({ url: 'https://paste-title.dev/' }))[0]?.title,
+  );
+  check('typing names the pasted link in one step', pastedTitle === 'Pasted title', pastedTitle);
+
+  // leave the library as the popup checks below expect it
+  await inWorker(async () => {
+    for (const url of ['https://paste-title.dev/', 'https://zebra-unique.example/'])
+      for (const b of await chrome.bookmarks.search({ url })) await chrome.bookmarks.remove(b.id);
+    for (const b of await chrome.bookmarks.search({ title: 'Calculus notes' })) await chrome.bookmarks.remove(b.id);
+  });
+  await sleep(600);
+
   // ---- popup ----
   // Many top-level folders so a last-used destination sits below the 192px list without scrolling.
   await inWorker(async () => {

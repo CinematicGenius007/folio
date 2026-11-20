@@ -6,6 +6,11 @@ All notable changes are recorded here. The format follows [Keep a Changelog](htt
 
 ### Added
 
+- Inbox triage in the dashboard and side panel: the highlighted Inbox bookmark suggests up to three folders; `1`-`3` or a click files it there, with Undo.
+- Moves can be undone with `Z` or `⌘Z`, like deletes, for one bookmark or several.
+- `#tag` in the search box filters to bookmarks with exactly that tag, and tags on rows are clickable.
+- A Duplicates view, in the folder switcher when any link is saved more than once, lists the copies together for cleanup.
+- Saving a pasted link from the search box opens its Edit dialog with the site name selected, so it can be titled in one step.
 - Save popup suggests folders from local signals only: sites already filed under a host, folder-name overlap with the page title, and how often you pick each folder. Ranked rows sit above the tree with a short reason; the tree and `/` search stay as the escape hatch.
 
 ### Changed

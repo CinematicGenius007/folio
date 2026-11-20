@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Tombstone } from '@/lib/core/types';
+
+/** Reverses the change a toast reports (restore deleted bookmarks, move bookmarks back). */
+export type Undo = () => Promise<void>;
 
 export interface ToastState {
   message: string;
-  /** Deleted bookmarks that the toast's Undo button restores. */
-  undo?: Tombstone[];
+  /** What the toast's Undo button (and `Z`, `⌘Z`) does. No undo, no button. */
+  undo?: Undo;
 }
 
 const TOAST_MS = 7000;
@@ -19,7 +21,7 @@ export function useToast() {
     setToast(null);
   }, []);
 
-  const say = useCallback((message: string, undo?: Tombstone[]) => {
+  const say = useCallback((message: string, undo?: Undo) => {
     clearTimeout(timer.current);
     setToast({ message, undo });
     timer.current = setTimeout(() => setToast(null), TOAST_MS);

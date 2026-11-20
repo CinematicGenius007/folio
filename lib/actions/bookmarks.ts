@@ -53,17 +53,24 @@ export async function addBookmark(input: {
   const node = await browser.bookmarks.create({ parentId: input.parentId, title: input.title, url: input.url });
   if (input.note || input.tags?.length) await setMeta(node.id, { note: input.note ?? '', tags: input.tags ?? [] });
   await setSetting('lastCollectionId', input.parentId);
-  // Local learning signal for folder suggestions: how often this destination is chosen.
-  // Atomic read-modify-write so two open surfaces saving at once cannot clobber counts.
-  // The read model may lag the native create, so always keep the folder we just saved into.
+  await recordFolderPick(input.parentId);
+  return node.id;
+}
+
+/**
+ * Counts one deliberate choice of `folderId` as a destination: a save from the popup, or filing a
+ * bookmark out of the Inbox. Folder suggestions rank frequent destinations higher.
+ * Atomic read-modify-write so two open surfaces saving at once cannot clobber counts.
+ * The read model may lag the native change, so the folder just picked is always kept.
+ */
+export async function recordFolderPick(folderId: string): Promise<void> {
   await db.transaction('rw', db.settings, db.folders, async () => {
     const row = await db.settings.get('folderPickCounts');
     const picks = (row?.value as Record<string, number> | undefined) ?? {};
     const folderIds = (await db.folders.toCollection().primaryKeys()).map(String);
-    const pruned = folderIds.length > 0 ? prunePickCounts(picks, new Set([...folderIds, input.parentId])) : picks;
-    await db.settings.put({ key: 'folderPickCounts', value: bumpPickCount(pruned, input.parentId) });
+    const pruned = folderIds.length > 0 ? prunePickCounts(picks, new Set([...folderIds, folderId])) : picks;
+    await db.settings.put({ key: 'folderPickCounts', value: bumpPickCount(pruned, folderId) });
   });
-  return node.id;
 }
 
 /** Changes a bookmark's title and/or URL. A new URL must be an http, https or ftp link. */
@@ -72,9 +79,53 @@ export async function updateBookmark(id: string, patch: { title?: string; url?: 
   await browser.bookmarks.update(id, patch);
 }
 
-/** Moves bookmarks (or folders) to the end of `parentId`. */
-export async function moveBookmarks(ids: string[], parentId: string): Promise<void> {
-  for (const id of ids) await browser.bookmarks.move(id, { parentId });
+/** Where a bookmark sat before a move, so {@link restoreMoves} can put it back. */
+export interface MoveRecord {
+  id: string;
+  parentId: string;
+  index: number;
+}
+
+/**
+ * Moves bookmarks (or folders) to the end of `parentId`. Returns where each one was before,
+ * read from the browser at the moment of the move, for undo.
+ */
+export async function moveBookmarks(ids: string[], parentId: string): Promise<MoveRecord[]> {
+  const records: MoveRecord[] = [];
+  for (const id of ids) {
+    const [node] = await browser.bookmarks.get(id).catch(() => []);
+    if (!node?.parentId) continue;
+    records.push({ id, parentId: node.parentId, index: node.index ?? 0 });
+    await browser.bookmarks.move(id, { parentId });
+  }
+  return records;
+}
+
+/**
+ * Undoes {@link moveBookmarks}: each bookmark goes back to its old folder and position. Bookmarks
+ * deleted since are skipped; a folder deleted since sends its bookmarks to the Inbox. Each index was
+ * read just before its own move, so replaying the records last-first puts siblings moved together
+ * back exactly where they were.
+ */
+export async function restoreMoves(records: MoveRecord[]): Promise<void> {
+  for (const record of [...records].reverse()) {
+    const [node] = await browser.bookmarks.get(record.id).catch(() => []);
+    if (!node) continue;
+    const [parent] = await browser.bookmarks.get(record.parentId).catch(() => []);
+    if (parent && !parent.url)
+      await browser.bookmarks.move(record.id, { parentId: record.parentId, index: record.index });
+    else await browser.bookmarks.move(record.id, { parentId: await ensureInbox() });
+  }
+}
+
+/**
+ * Files one bookmark into `folderId` (Inbox triage). Counts as a folder pick, like saving there from
+ * the popup, because it is the same decision made later. Returns the undo record.
+ */
+export async function fileBookmark(id: string, folderId: string): Promise<MoveRecord[]> {
+  const records = await moveBookmarks([id], folderId);
+  if (records.length) await recordFolderPick(folderId);
+  return records;
 }
 
 /**

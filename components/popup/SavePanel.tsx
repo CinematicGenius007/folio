@@ -172,7 +172,7 @@ export function SavePanel({
         />
       </div>
       <div className="flex items-center justify-between gap-3 px-4 pb-3 pt-1">
-        <span className="flex min-w-0 items-center gap-3 whitespace-nowrap text-[12px] text-muted">
+        <span className="flex items-center gap-2 whitespace-nowrap text-[12px] text-muted">
           {removed ? (
             <span>
               Removed.{' '}
@@ -184,20 +184,20 @@ export function SavePanel({
               </button>
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1">
               <Kbd>↑↓</Kbd> choose
             </span>
           )}
           {/* The placeholder says this too, but it disappears once you type; this hint stays. */}
           <button
             onClick={() => (setText('/'), inputRef.current?.focus())}
-            className="inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
+            className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
           >
             <Kbd>/</Kbd> folders
           </button>
           <button
             onClick={() => void openFolio()}
-            className="inline-flex cursor-pointer items-center gap-1.5 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
+            className="inline-flex cursor-pointer items-center gap-1 border-0 bg-transparent p-0 text-[12px] text-muted hover:text-ink"
           >
             Open Folio <Kbd>0</Kbd>
           </button>

@@ -90,13 +90,15 @@ export function SavedPanel({
                 await setMeta(bookmark.id, { note: text, tags });
               }
               setEditing(false);
+              // Focus would otherwise sit on a footer button, where a stray ↵ acts on it.
+              (document.activeElement as HTMLElement | null)?.blur();
             }}
           />
         ) : (
           <button
             onClick={() => setEditing(true)}
             aria-label={hasNote ? 'Edit note and tags' : 'Add a note'}
-            className="flex min-h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-[10px] border-0 bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-hover"
+            className="flex min-h-8 w-full cursor-pointer items-center justify-between gap-3 rounded-[10px] border border-transparent bg-transparent px-3 py-1.5 text-left text-[13px] hover:bg-hover"
           >
             {hasNote && meta ? (
               <span className="flex min-w-0 flex-col gap-1 text-ink-soft">
@@ -127,16 +129,22 @@ export function SavedPanel({
             <span className="inline-flex items-center gap-1.5 text-[12px] text-muted">
               <Kbd>Esc</Kbd> cancel
             </span>
-            <Button variant="primary" form="saved-note">
+            <Button key="save-note" variant="primary" form="saved-note">
               Save <Kbd>↵</Kbd>
             </Button>
           </>
         ) : (
           <>
-            <Button variant="ghost" onClick={() => void remove()} className="-ml-3" style={{ color: 'var(--danger)' }}>
+            <Button
+              key="remove"
+              variant="ghost"
+              onClick={() => void remove()}
+              className="-ml-3"
+              style={{ color: 'var(--danger)' }}
+            >
               Remove <Kbd>⌫</Kbd>
             </Button>
-            <Button onClick={() => void openFolio()}>
+            <Button key="open" onClick={() => void openFolio()}>
               Open in Folio <Kbd>0</Kbd>
             </Button>
           </>

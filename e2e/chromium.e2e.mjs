@@ -330,7 +330,10 @@ try {
       const footer = document.querySelector('#root > div').lastElementChild;
       const edge = footer.getBoundingClientRect().right - parseFloat(getComputedStyle(footer).paddingRight);
       const right = Math.max(...[...footer.querySelectorAll('*')].map((el) => el.getBoundingClientRect().right));
-      return right <= edge + 0.5 && document.documentElement.scrollWidth <= 380;
+      // the hints must also keep clear of the Save button
+      const [hints, save] = footer.children;
+      const clear = save.getBoundingClientRect().left - hints.getBoundingClientRect().right >= 8;
+      return clear && right <= edge + 0.5 && document.documentElement.scrollWidth <= 380;
     });
   await page.goto(`${server.origin}/fresh-page`);
   const popupTags = await context.newPage();

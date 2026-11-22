@@ -74,12 +74,12 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.0.0",
     "globals": "^17.14.0",
-    "playwright-core": "1.65.0",
+    "playwright-core": "1.65.1",
     "prettier": "^3.10.1",
     "tailwindcss": "^4.3.5",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.72.2",
-    "vitest": "^5.1.0",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1",
     "wxt": "^0.21.5"
   }
 }
